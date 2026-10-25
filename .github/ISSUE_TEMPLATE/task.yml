@@ -1,0 +1,32 @@
+name: Acceptance task
+description: One owned, reviewable piece of the HTLC project
+title: "[A-F] "
+body:
+  - type: input
+    id: acceptance
+    attributes:
+      label: Acceptance item IDs
+      placeholder: "A1, A3, B2..."
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner and reviewer
+      placeholder: "Member 1 / Member 2"
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Deliverable and interface handoff
+      description: Name the files or functions and what another member needs.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Completion evidence
+      description: Include positive/negative tests or public transaction links.
+    validations:
+      required: true

@@ -1,0 +1,102 @@
+# AI-assisted workspace configuration; team review required before submission.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check collaboration and acceptance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in README.md Changes.md AGENTS.md .agent/acceptance.md \
+            docs/architecture.md docs/collaboration.md docs/contributions.md \
+            .env.example .github/PULL_REQUEST_TEMPLATE.md \
+            .github/ISSUE_TEMPLATE/task.yml; do
+            test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
+          done
+          for dir in contracts scripts src test; do
+            test -d "$dir" || { echo "Missing directory: $dir"; exit 1; }
+          done
+          test "$(grep -cE '^\| [1-5] \|' docs/contributions.md)" -eq 5
+
+  implementation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Detect implementation
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package.json ]] || [[ -n "$(find contracts scripts src test \
+            -type f \( -name '*.sol' -o -name '*.ts' -o -name '*.tsx' \
+            -o -name '*.js' -o -name '*.jsx' \) -print -quit)" ]]; then
+            echo "started=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "started=false" >> "$GITHUB_OUTPUT"
+            echo "Planning stage: Tasks A-C have not been checked." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Set up Node
+        if: steps.detect.outputs.started == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Compile and test the implementation
+        if: steps.detect.outputs.started == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package-lock.json || { echo "Root npm lockfile required"; exit 1; }
+          npm ci
+          npm run compile
+          npm run test:contracts
+          npm run test:protocol
+          npm run build:web
+
+  final-acceptance:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [workspace, implementation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check submission files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s contracts/ERC20HTLC.sol
+          test -s contracts/ETHHTLC.sol
+          test -n "$(find scripts -type f ! -name '.gitkeep' -print -quit)"
+          test -n "$(find src -type f ! -name '.gitkeep' -print -quit)"
+          test -s .env.example
+          test -s Report.pdf
+          test -s docs/contributions.md
+          test -s Changes.md
+          if grep -q 'Implementation has not started' README.md; then
+            echo "README.md still describes the planning stage"
+            exit 1
+          fi
+          if [[ ! -s presentation.pdf && ! -s presentation.pptx ]]; then
+            echo "Missing presentation.pdf or presentation.pptx"
+            exit 1
+          fi
+          if grep -Eq '\| (Pending|TBD) \|' \
+            docs/contributions.md .agent/acceptance.md; then
+            echo "Contribution or acceptance evidence is still pending"
+            exit 1
+          fi
+          if grep -q 'workspace planning and CI scaffolding only' Changes.md; then
+            echo "Changes.md still describes the planning stage"
+            exit 1
+          fi
+          echo "Files are present. Review on-chain and live-demo evidence manually." \
+            >> "$GITHUB_STEP_SUMMARY"
