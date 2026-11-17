@@ -1,32 +1,20 @@
-# Acceptance map for agents and reviewers
+# Acceptance evidence
 
-Source of truth: `docs/COMP5521_HTLC_Project_2026.pdf`. Use this as a
-checklist, not as a claim that a successful CI run proves a live swap.
-Mark each row with a test, public transaction link or report/demo evidence
-when it exists. All rows are currently pending.
+Requirements source: `docs/COMP5521_HTLC_Project_2026.pdf`. Basic A-F scope is 90 marks. Evidence demonstrates implementation, not awarded marks.
 
-| Item | Verification required | Evidence |
+| Item | Implemented evidence | Remaining assessment |
 | --- | --- | --- |
-| A1-A2 | Unique valid MST and ETH locks, correct escrow values, records and creation events; invalid/duplicate/zero-value cases | Pending |
-| A3-A5 | Receiver-only preimage claim before expiry; sender-only refund after expiry; no repeat/late/cross-state completion; transfer and reentrancy safety | Pending |
-| B1 | Deploy to Ethereum Sepolia (11155111) and Arbitrum Sepolia (421614); record MST/HTLC addresses without private keys | Pending |
-| B2 | Generate secret/hash, confirm and verify the first lock before the second; claim ETH then MST; show both confirmed tx hashes and final states | Pending |
-| B3-B4 | Query each chain independently; show active/claimable/claimed/expired/refundable states; recover expired locks and suppress invalid actions | Pending |
-| C1-C4 | Wallet/network switch, balances, approval, lock/verify/counter-lock/claim/refund guidance, progress/errors/links/final states | Pending |
-| D | Report at most six main-text pages: design/implementation, Task A/B mechanisms, tests/results and limitations; slides and explainable functions | Pending |
-| E | Four-minute live success plus timeout or failure/recovery; invalid action before expiry and refund after expiry | Pending |
-| F | Five real names/IDs, owned work and verifiable individual evidence; all available for Q&A | Pending |
-| CH1-CH3 | Optional only: distinct public unlocking values, verifiable private linkage, atomicity/privacy analysis and failed-proof case | Not selected |
+| A1-A2 | `ERC20HTLC.sol` and `ETHHTLC.sol`; contract tests cover lock records/events, invalid IDs/addresses/amounts/hashlocks/deadlines, duplicate locks and assets held in escrow. | Additional assessor scenarios may use other amounts/accounts. |
+| A3-A5 | Receiver-only matching preimage claim; sender-only refund; exact expiry boundary; repeated/cross-state operations rejected. Tests verify transfer failure rollback, SafeERC20 failure and receiver reentry protection. | No external security audit. Configured asset is standard MST. |
+| B1 | `docs/evidence/deployment.json`: MST and ERC20 escrow on 11155111, ETH escrow on 421614, confirmed deployment receipts/code. | Recheck RPC/funds before the demonstration. |
+| B2 | `testnet-success.json`: 1 MST / 0.0001 ETH, confirmed matching locks, public ETH claim event, MST claim, Claimed/Claimed. Shared verification checks configured escrow/participants/token/amount/hash/deadlines/state. | One receipt confirmation is testnet rehearsal policy, not finality. |
+| B3-B4 | Separate providers and block timestamps, local integration with independently advanced clocks, `testnet-recovery.json` early refund rejection plus Refunded/Refunded. | Continue monitoring until completing a live swap or refund. |
+| C1-C4 | MetaMask connection/network helpers, balances, public plan/private backup, approval, verified locks/claims/refunds, progress/errors/explorer links. Browser smoke checks exercise responsive layout, no-wallet feedback, live RPC plan generation and actual final-state imports. | Human MetaMask signing rehearsal remains. Mock wallet helper tests do not prove extension dialogs. |
+| D | `Report.pdf` uses the four required sections within six pages; `presentation.pptx` has system design, Task A/B, results and limitations, with four-minute notes. | Student review, four-minute oral delivery and Q&A. |
+| E | Both real testnet scenarios already executed; `docs/demo.md` prepares a separate four-minute live operation. | Classroom live operation is still required. Prior receipts/screenshots do not earn live-operation marks. |
+| F | `docs/contributions.md` and honest `docs/ai-assistance.md`. | Real name/ID and personal work/review evidence remain to be completed. |
+| CH1-CH3 | Not selected. | Optional ten marks excluded. |
 
-Automated PR CI checks local compile, contract/protocol tests and browser
-build once implementation starts. It cannot prove testnet deployment,
-timelock waits, MetaMask interaction, the timed live demo, report quality
-or genuine individual authorship. A manual final-acceptance CI run checks
-required file presence, while reviewers attach the remaining evidence.
+CI always compiles contracts, runs contract and independent-chain protocol tests, type-checks/builds the UI and checks public evidence/artifact consistency offline. The manual final-acceptance job also rejects missing identity fields. No testnet signing key is used in CI.
 
-Expected negative tests: duplicate/invalid swap ID, zero token/ETH amount,
-bad addresses/deadlines, wrong receiver, wrong preimage, early refund,
-late claim, repeated claim/refund and refund after claim. Protocol tests
-must include mismatched counter-lock parameters, unconfirmed transactions,
-both-chain independent status and timeout recovery. Run real testnet
-checks with locally held credentials, never in a public PR workflow.
+`npm run check:acceptance -- --live` independently rechecks public deployment receipts/code, token binding, ten swap receipts and current final states, writing `docs/evidence/live-verification.json`. It is read-only and does not reproduce a fresh swap or verify classroom performance. The early-refund evidence records a read-only rejected call rather than an on-chain failed transaction.

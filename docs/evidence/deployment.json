@@ -1,0 +1,34 @@
+{
+  "ethereumSepolia": {
+    "chainId": 11155111,
+    "mst": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+    "erc20Htlc": "0xd3CBcA8CA30513945D3e8ae8190634432e3F8f47"
+  },
+  "arbitrumSepolia": {
+    "chainId": 421614,
+    "ethHtlc": "0x220202AAc9C7f75cCfeA5780C62b06B71fbaAA71"
+  },
+  "deployer": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+  "mstInitialSupply": "1000000000000000000000000",
+  "generatedAt": "2026-11-17T05:58:43.057Z",
+  "contracts": {
+    "MST": {
+      "address": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+      "transactionHash": "0xb7142b3345fed64af2790a9babb32a231df9059a71c57479508ce00e5f3f2d26",
+      "bytecodeHash": "0x7783e52a32f20a20cba1ae5686eb7573efd4d3baa11ec0ab56eb7def96316d0f",
+      "blockNumber": 12152482
+    },
+    "ERC20HTLC": {
+      "address": "0xd3CBcA8CA30513945D3e8ae8190634432e3F8f47",
+      "transactionHash": "0x394a08b61240808870598630cf150b71add92037f32fb44e2dc855396ef8313c",
+      "bytecodeHash": "0x93aaeefab0e45f55422a69bce4c70d76b189329c36b7293a35db0511fb60ddd2",
+      "blockNumber": 12152483
+    },
+    "ETHHTLC": {
+      "address": "0x220202AAc9C7f75cCfeA5780C62b06B71fbaAA71",
+      "transactionHash": "0xa3347099b82e6019991a97890807040b4c0bcf51c551b94486796b28e4d7d126",
+      "bytecodeHash": "0xf1d74cab57af8ea54344eac2b4d82bdee54a256204783b8b2d75a2d3e4db6db2",
+      "blockNumber": 330008509
+    }
+  }
+}

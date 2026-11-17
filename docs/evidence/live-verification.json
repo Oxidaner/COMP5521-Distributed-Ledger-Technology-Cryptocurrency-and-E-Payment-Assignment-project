@@ -1,0 +1,11 @@
+{
+  "verifiedAt": "2026-11-17T06:32:35.131Z",
+  "receiptsChecked": 13,
+  "chainIds": [
+    11155111,
+    421614
+  ],
+  "success": "Claimed / Claimed",
+  "recovery": "Refunded / Refunded",
+  "scope": "Read-only receipt, deployed code, token binding and independent state verification. No browser signing or classroom assessment."
+}

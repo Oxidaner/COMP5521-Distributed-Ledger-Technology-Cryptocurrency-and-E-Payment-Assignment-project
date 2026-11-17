@@ -1,17 +1,9 @@
-# Group contribution table
+# Individual contribution
 
-Fill the actual names, student IDs and evidence links before submission.
-Evidence can be reviewed commits, tests, reports, scripts or documented
-analysis; describe individual functions and work products precisely.
+| Name | Student ID | Role and actual contribution | Evidence |
+| --- | --- | --- | --- |
+| TBD | TBD | Sole project owner. Selected the Hardhat/TypeScript/React option, created Alice and Bob MetaMask accounts, obtained test funds and configured local testnet settings. Student code review, explanation and any further personally implemented changes must be added after completion. | Configuration enables the public deployments and swaps in `docs/evidence/`. Personal review records, commits and live operation remain to be attached. |
 
-| Member | Name | Student ID | Owned modules/functions/tests or analysis | Evidence (PR, commit, test or artifact) |
-| --- | --- | --- | --- | --- |
-| 1 | TBD | TBD | ERC20 escrow and tests | TBD |
-| 2 | TBD | TBD | ETH escrow and tests | TBD |
-| 3 | TBD | TBD | Deployment and successful-swap scripts | TBD |
-| 4 | TBD | TBD | Wallet and guided claim UI | TBD |
-| 5 | TBD | TBD | Independent state, refund and recovery UI | TBD |
+AI generated the implementation, tests and written materials, and executed testnet transactions using the configured test-only accounts. `docs/ai-assistance.md` details that assistance. Those outputs demonstrate the system's behavior; they do not independently establish personal student authorship or understanding.
 
-All members: presentation, live operation and Q&A. Include the completed
-table in the submitted report package; list AI-assisted functions in the
-report separately.
+Before submission, enter the real name/ID and add only verifiable work actually performed, including reviewed functions, fixes, analysis, rehearsal or other work products. Do not put private keys or unrevealed secrets in contribution evidence.

@@ -1,0 +1,6 @@
+.wallet-chain{font:9px var(--mono);color:#66736f}
+.wallet-message{margin:10px 0;padding:9px 11px;border-left:2px solid #a65745;background:#f7e8e2;color:#793e32;font-size:10px;overflow-wrap:anywhere}
+.wallet-network-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line);font-size:9px;color:#68736d}
+.wallet-network-actions span{margin-right:auto;overflow-wrap:anywhere}
+.wallet-network-actions button{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:6px 8px;border-radius:2px;font-size:9px}
+@media(max-width:680px){.wallet-chain{display:none}.wallet-network-actions span{flex-basis:100%}}

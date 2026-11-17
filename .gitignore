@@ -8,3 +8,6 @@ artifacts/
 cache/
 coverage/
 *.log
+deployments/
+.build/
+submission/
