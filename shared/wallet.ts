@@ -47,8 +47,22 @@ export async function switchMetaMaskNetwork(
     typeof window === "undefined" ? undefined : window.ethereum,
 ): Promise<void> {
   if (!provider) throw new Error("MetaMask was not found in this browser.");
-  await provider.request({
-    method: "wallet_switchEthereumChain",
-    params: [{ chainId: `0x${chainId.toString(16)}` }],
-  });
+  const target = { chainId: `0x${chainId.toString(16)}` };
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [target] });
+  } catch (error) {
+    if ((error as { code?: number }).code !== 4902) throw error;
+    const ethereum = chainId === 11155111;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        ...target,
+        chainName: ethereum ? "Ethereum Sepolia" : "Arbitrum Sepolia",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: [ethereum ? "https://ethereum-sepolia-rpc.publicnode.com" : "https://sepolia-rollup.arbitrum.io/rpc"],
+        blockExplorerUrls: [ethereum ? "https://sepolia.etherscan.io" : "https://sepolia.arbiscan.io"],
+      }],
+    });
+    await provider.request({ method: "wallet_switchEthereumChain", params: [target] });
+  }
 }

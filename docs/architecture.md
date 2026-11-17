@@ -60,7 +60,7 @@ and refunds.
 - Choice: Hardhat 3 + TypeScript + ethers v6 + React/Vite.
 - Decision owner/date: sole student, 2026-10-28.
 - Consequences or deviations: one npm workspace and lockfile; two independent
-  local chains; no optional privacy challenge in the A-F delivery.
+  local chains; the basic HTLC delivery remains available alongside the separate privacy extension added on 2026-11-18.
 
 ## Confirmed interface decisions
 
@@ -81,3 +81,7 @@ and refunds.
 - Default protocol durations: ETH 600 seconds and MST 1200 seconds, with a
   script override. Local tests advance timestamps instead of waiting.
 - Frontend is browser-only, React/Vite and ethers v6.
+
+## Optional extension decision, 2026-11-18
+
+The owner requested the remaining Task C and Challenge work. Use the specification's point-lock alternative: separate `PrivateHTLC` deployments use Ethereum BN254 ECMUL, and an off-chain Schnorr proof binds the private relation to both complete lock terms. Bob owns a fresh offset; Alice's first claim lets only Bob derive the distinct second claim before publication. Independent IDs avoid an additional shared on-chain marker. `@noble/curves@1.9.0`, already pinned transitively by ethers, is now a direct exact dependency for its public BN254 G1 interface. No curve defaults or Hardhat network/compiler options change. See `docs/privacy.md` for the protocol, failure cases and metadata limitations.

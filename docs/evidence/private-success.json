@@ -1,0 +1,85 @@
+{
+  "scenario": "success",
+  "observedAt": "2026-11-17T16:23:54.881Z",
+  "config": {
+    "mst": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+    "privateMstHtlc": "0x7b77749298C2a76bb1a70E6D6c7b09a4f01F6c3c",
+    "privateEthHtlc": "0xA34Ed8d2b1045A774C411c866e6e38D09DC700F3"
+  },
+  "ethereum": {
+    "swapId": "0x4e9a5369bcf3e1f8f1c73f9281f3df2e2946bc523f4dbcdee6e7c5bfda655ffe",
+    "escrow": "0x7b77749298C2a76bb1a70E6D6c7b09a4f01F6c3c",
+    "point": {
+      "x": "0x127b3757b36a62cf4565239ea1dde3dd4e8c1c88b375c2144b787cdacaeb520d",
+      "y": "0x15ffb90b40ea658ec3548dcf1d2944b3bb8e69b8deaab19c051d1f3ae681fac8"
+    },
+    "state": {
+      "sender": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+      "receiver": "0x055adFd1D01e2135835F521F300294ee0D3961b8",
+      "amount": "1000000000000000000",
+      "pointX": "0x127b3757b36a62cf4565239ea1dde3dd4e8c1c88b375c2144b787cdacaeb520d",
+      "pointY": "0x15ffb90b40ea658ec3548dcf1d2944b3bb8e69b8deaab19c051d1f3ae681fac8",
+      "timelock": 1794933767,
+      "timestamp": 1794932628,
+      "phase": "Claimed"
+    },
+    "transactions": [
+      {
+        "chain": "ethereum",
+        "hash": "0x05477076d3aa5eb4dadc8fd27242626d9adc8c200454deea02dac1ee93326fa7",
+        "blockNumber": 12155556,
+        "action": "private approve"
+      },
+      {
+        "chain": "ethereum",
+        "hash": "0xaa53926324489fbe0017e4505d4a2671e0f798c27ed94b52843e3bf39421ec9b",
+        "blockNumber": 12155557,
+        "action": "private lock"
+      },
+      {
+        "chain": "ethereum",
+        "hash": "0x1fc84e121894c85d9c70f353245af50652e7ca666305fb1618b91912244612c8",
+        "blockNumber": 12155560,
+        "action": "private claim"
+      }
+    ]
+  },
+  "arbitrum": {
+    "swapId": "0x3947f5662ba2b19bab2d6ab02c32e833654a54a3fa63c226c173bcb2515b374d",
+    "escrow": "0xA34Ed8d2b1045A774C411c866e6e38D09DC700F3",
+    "point": {
+      "x": "0x1a1b68ceabe5561a3ab2a2b0e4000917fa6d7493e56b21b90397f34b21d92fac",
+      "y": "0x2a8ff31d7a13ba5cf4289bde8bf7655d487baba3837aa16f2308274ee3442909"
+    },
+    "state": {
+      "sender": "0x055adFd1D01e2135835F521F300294ee0D3961b8",
+      "receiver": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+      "amount": "100000000000000",
+      "pointX": "0x1a1b68ceabe5561a3ab2a2b0e4000917fa6d7493e56b21b90397f34b21d92fac",
+      "pointY": "0x2a8ff31d7a13ba5cf4289bde8bf7655d487baba3837aa16f2308274ee3442909",
+      "timelock": 1794933167,
+      "timestamp": 1794932633,
+      "phase": "Claimed"
+    },
+    "transactions": [
+      {
+        "chain": "arbitrum",
+        "hash": "0x07f1171e1309e6ecf3e6c4d21006d23e3933985e0233f939ab265054eb8a5fd9",
+        "blockNumber": 330148695,
+        "action": "private lock"
+      },
+      {
+        "chain": "arbitrum",
+        "hash": "0xfa915714ef1d7a5e7fb9f0ef31fa3f69cc21b4fd49794aec445a355c6ef0f31a",
+        "blockNumber": 330148726,
+        "action": "private claim"
+      }
+    ]
+  },
+  "negativeChecks": [
+    "invalid Schnorr proof: rejected before broadcast; Bob nonce unchanged",
+    "incorrect private offset: rejected before broadcast; Bob nonce unchanged"
+  ],
+  "earlyRefundRejected": false,
+  "assessmentDisclosure": "This evidence intentionally pairs the two legs for grading. The protocol does not publish the peer transcript, offset point or linkage proof on chain."
+}

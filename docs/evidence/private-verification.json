@@ -1,0 +1,12 @@
+{
+  "verifiedAt": "2026-11-17T16:29:22.603Z",
+  "receiptsChecked": 12,
+  "chainIds": [
+    11155111,
+    421614
+  ],
+  "distinctClaimValues": true,
+  "success": "Claimed / Claimed",
+  "recovery": "Refunded / Refunded",
+  "scope": "Read-only creation-bytecode, asset binding, successful receipts, distinct on-chain claim values and independent final states. No private peer transcript published; no MetaMask signing assertion."
+}

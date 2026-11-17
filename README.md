@@ -1,6 +1,6 @@
 # COMP5521 2026 Cross-chain HTLC
 
-Working basic A-F implementation: MST on Ethereum Sepolia is exchanged for native ETH on Arbitrum Sepolia. Hardhat 3, TypeScript, ethers 6 and React/Vite share one pinned npm toolchain. The two contracts never call each other. The optional privacy challenge is not selected (basic maximum: 90/100).
+MST on Ethereum Sepolia is exchanged for native ETH on Arbitrum Sepolia. The basic HTLC workflow and the optional privacy challenge are implemented. The privacy extension uses distinct point locks, Schnorr verification before counter-locking and a private participant offset. Hardhat 3, TypeScript, ethers 6 and React/Vite share one pinned npm toolchain. The two contracts never call each other. Implementation and evidence do not guarantee assessment marks.
 
 ## Verified deployment
 
@@ -54,7 +54,21 @@ Update `src/public-config.json` when selecting a different deployment. This file
 5. Switch to Bob. Enter Alice's confirmed ETH claim hash and observe the secret to claim MST. Refresh both chains to see `Claimed / Claimed`.
 6. For recovery, create a separate swap, leave it unclaimed, show refund unavailable before expiry, then let Bob refund ETH and Alice refund MST after their respective chain deadlines. Both states become `Refunded`.
 
-The private backup contains the secret and must stay private until the ETH claim. Public plans contain only agreed parameters and lock hashes. Importing an updated plan for the same swap preserves a matching private secret; importing an older private backup preserves known lock hashes. Changes to the agreed parameters under the same swap ID are rejected. Page reload clears the active in-memory plan, so save updated backups/plans. State and balances refresh independently for each chain; an unavailable RPC is reported on that chain without blocking refunds on the other. Expired plans cannot start new locks, and the first lock rechecks both chain timestamps after approval. See [the timed live runbook](docs/demo.md).
+The private backup contains the secret and must stay private until the ETH claim. Public plans contain only agreed parameters and lock hashes. Importing an updated plan for the same swap preserves a matching private secret; importing an older private backup preserves known lock hashes. Changes to the agreed parameters under the same swap ID are rejected. Page reload clears the active in-memory plan, so save updated backups/plans. State and balances refresh independently for each chain; an unavailable RPC is reported on that chain without blocking refunds on the other. Expired plans cannot start new locks, and the first lock rechecks both chain timestamps after approval. MetaMask can add a missing assignment network after user approval. Transaction feedback separates signature, broadcast and confirmation, with an explorer link immediately after broadcast. See [the timed live runbook](docs/demo.md).
+
+## Optional privacy challenge
+
+The **Private point-lock exchange** section operates separate `PrivateHTLC` deployments recorded in `src/private-config.json`. Bob generates a fresh private offset and sends its point to Alice. Alice creates a proof and distinct locks; Bob verifies the proof, his offset and the first on-chain lock before committing ETH. Alice's first claim reveals `a`; Bob alone can derive `b = a + k mod n` before his claim. The two chains publish different identifiers, points and claim values. Both timeout refunds remain available. The peer plan includes linkage evidence and must be sent directly to the counterparty, never published.
+
+```bash
+npm run test:privacy
+npm run deploy:private
+npm run protocol:private -- success
+npm run protocol:private -- recovery
+npm run check:privacy -- --live
+```
+
+The extension has 8 tests in addition to the 9 basic contract and 10 protocol tests. Public testnet success/recovery evidence is in `docs/evidence/private-*.json`. The verification command checks deployed creation bytecode, asset bindings, receipts, distinct claim values and independent final states. [The privacy protocol](docs/privacy.md) explains CH1-CH3, peer handoff, failed verification and remaining account/amount/timing correlation. Fresh offsets are required for every swap. Published grading evidence intentionally identifies both demonstrated legs; no anonymity is claimed. Real MetaMask signing and classroom performance still require human rehearsal.
 
 ## Script exchange and recovery
 
@@ -77,7 +91,7 @@ Script recovery records in `deployments/swaps/` contain private preimages. They 
 
 ## Deliverables and remaining assessment
 
-- [Report.pdf](Report.pdf): four required sections, at most six pages including its references and contribution appendix.
+- [Report.pdf](Report.pdf): four required sections across five main-text pages, plus one references/contribution appendix page.
 - [presentation.pptx](presentation.pptx): editable slides with four-minute speaker notes.
 - [Contribution table](docs/contributions.md): real name, student ID and student-reviewed contributions still need completion. [AI assistance](docs/ai-assistance.md) records actual generated work.
 - [Acceptance map](.agent/acceptance.md), [design](docs/architecture.md), [changes from Lab 4](Changes.md), [live demo](docs/demo.md).

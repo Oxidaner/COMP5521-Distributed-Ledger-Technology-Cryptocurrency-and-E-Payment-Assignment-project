@@ -44,10 +44,14 @@ jobs:
         run: npm run test:contracts
       - name: Test independent-chain protocol and recovery
         run: npm run test:protocol
+      - name: Test private linkage, claims and recovery
+        run: npm run test:privacy
       - name: Build web interface
         run: npm run build:web
       - name: Check submission evidence
         run: npm run check:acceptance
+      - name: Check private exchange evidence
+        run: npm run check:privacy
 
   final-acceptance:
     if: github.event_name == 'workflow_dispatch'

@@ -44,4 +44,8 @@ Inspect before retrying any write. If ETH was claimed, Bob should retrieve the c
 - What happens at exact expiry? Claim fails at `timestamp >= deadline`; the original sender can refund then if still active.
 - How is the counter-lock verified? Confirmed creation receipt at the configured contract, plus independent reads of sender, receiver, token, amount, hashlock, deadline and active state.
 - What remains risky? One confirmation can reorganize, short deadlines can race, lost secrets/browser state need backups, and a missed claim deadline can break fairness. Participants must stay online and act in time.
-- What is public? Addresses, amounts, timing, matching hashes and the revealed preimage. No optional privacy mechanism is claimed.
+- What is public? Basic swaps publish matching hashes and the same preimage. Private swaps publish different points, IDs and scalars; addresses, amounts and timing still permit correlation. The offset and relation proof stay between peers. See `docs/privacy.md`.
+
+## Optional challenge demonstration
+
+The challenge is assessed within Tasks A/B and is not required for full Task E marks. Keep the four-minute basic success/recovery sequence unless the assessor asks for the extension. Point to the private success/refund receipts and `npm run check:privacy -- --live`. Explain `A=aG`, `M=A+kG`, proof verification before Bob locks ETH and `b=a+k`. Show the failed proof/offset test and explain why the peer transcript is never published. Each example uses a fresh offset. Published grading evidence deliberately pairs the legs, so it does not claim anonymity for those examples. Actual browser signing still needs a MetaMask rehearsal.

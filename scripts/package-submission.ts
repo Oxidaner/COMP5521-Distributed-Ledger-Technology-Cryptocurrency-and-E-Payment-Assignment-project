@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const result = spawnSync("npm", ["run", "check:acceptance"], { stdio: "inherit" });
 if (result.status !== 0) process.exit(1);
+if (spawnSync("npm", ["run", "check:privacy"], { stdio: "inherit" }).status !== 0) process.exit(1);
 const root = resolve("submission");
 const staging = join(root, "COMP5521_HTLC_GroupXX");
 await mkdir(root, { recursive: true });

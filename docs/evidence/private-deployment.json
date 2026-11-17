@@ -1,0 +1,18 @@
+{
+  "deployedAt": "2026-11-17T16:22:18.014Z",
+  "mst": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+  "contracts": {
+    "ethereum": {
+      "address": "0x7b77749298C2a76bb1a70E6D6c7b09a4f01F6c3c",
+      "transactionHash": "0x45964ea0aea02e8b6d38843c60fa0370bf9fc4907d611acd635cdc711bad4113",
+      "bytecodeHash": "0xac08bf280427b1b08153b310346ee0b7477ddfc594ff4fe23e4771d3c8fe1e04",
+      "blockNumber": 12155553
+    },
+    "arbitrum": {
+      "address": "0xA34Ed8d2b1045A774C411c866e6e38D09DC700F3",
+      "transactionHash": "0xa2ac16bd2955537d2b3111a747e450fbc25d5b3388057f99e58bb513af617980",
+      "bytecodeHash": "0x2067c9be6d5e6973b7a88bbc516486b0a4816f66153435abc6f5791492ed6d3b",
+      "blockNumber": 330148497
+    }
+  }
+}

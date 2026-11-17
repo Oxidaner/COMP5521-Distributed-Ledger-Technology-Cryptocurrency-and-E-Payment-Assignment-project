@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getAddress } from "ethers";
 import { connectMetaMask, parseChainId, switchMetaMaskNetwork } from "../../shared/wallet";
 import { SwapWorkspace } from "./SwapWorkspace";
+import { PrivateWorkspace } from "./PrivateWorkspace";
 import config from "../public-config.json";
 
 export function Dashboard() {
@@ -147,6 +148,7 @@ export function Dashboard() {
         </div>
       </section>
       <div id="live-exchange"><SwapWorkspace account={account} /></div>
+      <PrivateWorkspace account={account} />
       <footer className="page-footer"><span>COMP5521 / DISTRIBUTED LEDGER TECHNOLOGY</span><span>LOCAL DEVELOPMENT BUILD</span></footer>
     </main>
   );

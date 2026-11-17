@@ -3,22 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.14.0 <25" },
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
   "scripts": {
     "compile": "hardhat compile",
     "test:contracts": "npm run compile && tsx scripts/run-acceptance-tests.ts test/contracts.test.ts",
     "test:protocol": "npm run compile && tsx scripts/run-acceptance-tests.ts test/protocol.test.ts",
-    "test": "npm run test:contracts && npm run test:protocol",
+    "test:privacy": "npm run compile && tsx scripts/run-acceptance-tests.ts test/privacy.test.ts",
+    "test": "npm run test:contracts && npm run test:protocol && npm run test:privacy",
     "typecheck": "tsc --noEmit",
     "build:web": "tsc --noEmit && vite build",
     "dev": "vite",
     "deploy": "tsx --env-file-if-exists=.env scripts/deploy.ts",
+    "deploy:private": "npm run compile && tsx --env-file-if-exists=.env scripts/deploy-private.ts",
     "protocol": "tsx --env-file-if-exists=.env scripts/cli.ts",
+    "protocol:private": "tsx --env-file-if-exists=.env scripts/private-cli.ts",
     "demo:local": "npm run test:protocol",
     "check:acceptance": "tsx scripts/check-acceptance.ts",
+    "check:privacy": "tsx scripts/check-privacy.ts",
     "package:submission": "tsx scripts/package-submission.ts"
   },
   "dependencies": {
+    "@noble/curves": "1.9.0",
     "@openzeppelin/contracts": "5.6.1",
     "ethers": "6.17.0",
     "react": "19.3.1",

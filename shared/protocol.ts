@@ -1,7 +1,8 @@
 import {
   Contract, Interface, MaxUint256, ZeroAddress, getAddress, hexlify, isHexString, keccak256,
-  parseEther, randomBytes, type Provider, type Signer, type TransactionReceipt,
+  parseEther, randomBytes, type Provider, type Signer,
 } from "ethers";
+import { submitTransaction, type TransactionObserver } from "./transactions";
 
 export const TOKEN_ABI = [
   "function approve(address,uint256) returns (bool)",
@@ -137,14 +138,7 @@ export async function verifyLock(provider: Provider, config: Configuration, plan
   return state;
 }
 
-async function confirm(tx: { hash: string; wait(): Promise<TransactionReceipt | null> }, chain: Chain, action: string, progress?: Progress): Promise<TransactionReceipt> {
-  const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) throw new Error(`${action} transaction failed`);
-  await progress?.({ chain, hash: receipt.hash, blockNumber: receipt.blockNumber, action });
-  return receipt;
-}
-
-export async function lockMst(signer: Signer, arbitrum: Provider, config: Configuration, plan: SwapPlan, progress?: Progress): Promise<string> {
+export async function lockMst(signer: Signer, arbitrum: Provider, config: Configuration, plan: SwapPlan, progress?: Progress, observe?: TransactionObserver): Promise<string> {
   validatePlan(plan);
   if (!signer.provider) throw new Error("Signer has no provider");
   const ethereum = signer.provider;
@@ -159,13 +153,13 @@ export async function lockMst(signer: Signer, arbitrum: Provider, config: Config
   if (!sameAddress(await escrow.token(), config.mst)) throw new Error("Escrow MST address mismatch");
   const token = new Contract(config.mst, TOKEN_ABI, signer);
   if (await token.allowance(plan.alice, config.erc20Htlc) < BigInt(plan.mstAmount)) {
-    await confirm(await token.approve(config.erc20Htlc, plan.mstAmount), "ethereum", "approve", progress);
+    await submitTransaction(() => token.approve(config.erc20Htlc, plan.mstAmount), "ethereum", "approve", progress, observe);
   }
   await checkDeadline();
-  return (await confirm(await escrow.createSwap(plan.swapId, plan.bob, plan.mstAmount, plan.hashlock, plan.mstTimelock), "ethereum", "lock", progress)).hash;
+  return (await submitTransaction(() => escrow.createSwap(plan.swapId, plan.bob, plan.mstAmount, plan.hashlock, plan.mstTimelock), "ethereum", "lock", progress, observe)).hash;
 }
 
-export async function lockEth(signer: Signer, ethereum: Provider, config: Configuration, plan: SwapPlan, progress?: Progress): Promise<string> {
+export async function lockEth(signer: Signer, ethereum: Provider, config: Configuration, plan: SwapPlan, progress?: Progress, observe?: TransactionObserver): Promise<string> {
   if (!signer.provider) throw new Error("Signer has no provider");
   await checkChain(signer.provider, "arbitrum");
   if (!sameAddress(await signer.getAddress(), plan.bob)) throw new Error("Connect Bob to lock ETH");
@@ -173,20 +167,20 @@ export async function lockEth(signer: Signer, ethereum: Provider, config: Config
   const ethBlock = await signer.provider.getBlock("latest");
   if (!ethBlock || plan.ethTimelock <= ethBlock.timestamp || plan.ethTimelock <= mst.timestamp) throw new Error("ETH deadline has expired; prepare a new plan");
   const escrow = new Contract(config.ethHtlc, ETH_ABI, signer);
-  return (await confirm(await escrow.createSwap(plan.swapId, plan.alice, plan.hashlock, plan.ethTimelock, { value: plan.ethAmount }), "arbitrum", "lock", progress)).hash;
+  return (await submitTransaction(() => escrow.createSwap(plan.swapId, plan.alice, plan.hashlock, plan.ethTimelock, { value: plan.ethAmount }), "arbitrum", "lock", progress, observe)).hash;
 }
 
-export async function claimSwap(signer: Signer, other: Provider, config: Configuration, plan: SwapPlan, chain: Chain, preimage: string, progress?: Progress): Promise<string> {
+export async function claimSwap(signer: Signer, other: Provider, config: Configuration, plan: SwapPlan, chain: Chain, preimage: string, progress?: Progress, observe?: TransactionObserver): Promise<string> {
   if (!signer.provider) throw new Error("Signer has no provider");
   if (!isHexString(preimage, 32) || keccak256(preimage) !== plan.hashlock) throw new Error("Wrong preimage");
   const state = await verifyLock(signer.provider, config, plan, chain);
   if (!sameAddress(await signer.getAddress(), state.receiver)) throw new Error("Only the receiver can claim");
   if (chain === "arbitrum") await verifyLock(other, config, plan, "ethereum");
   const address = chain === "ethereum" ? config.erc20Htlc : config.ethHtlc;
-  return (await confirm(await new Contract(address, COMMON_ABI, signer).claim(plan.swapId, preimage), chain, "claim", progress)).hash;
+  return (await submitTransaction(() => new Contract(address, COMMON_ABI, signer).claim(plan.swapId, preimage), chain, "claim", progress, observe)).hash;
 }
 
-export async function refundSwap(signer: Signer, config: Configuration, plan: SwapPlan, chain: Chain, progress?: Progress): Promise<string> {
+export async function refundSwap(signer: Signer, config: Configuration, plan: SwapPlan, chain: Chain, progress?: Progress, observe?: TransactionObserver): Promise<string> {
   if (!signer.provider) throw new Error("Signer has no provider");
   await checkChain(signer.provider, chain);
   const address = chain === "ethereum" ? config.erc20Htlc : config.ethHtlc;
@@ -194,7 +188,7 @@ export async function refundSwap(signer: Signer, config: Configuration, plan: Sw
   assertLock(state, plan, config, chain, false);
   if (state.phase !== "Expired") throw new Error("Refund is available only for an expired active lock");
   if (!sameAddress(await signer.getAddress(), state.sender)) throw new Error("Only the sender can refund");
-  return (await confirm(await new Contract(address, COMMON_ABI, signer).refund(plan.swapId), chain, "refund", progress)).hash;
+  return (await submitTransaction(() => new Contract(address, COMMON_ABI, signer).refund(plan.swapId), chain, "refund", progress, observe)).hash;
 }
 
 export async function revealedPreimage(provider: Provider, config: Configuration, plan: SwapPlan, claimTx: string): Promise<string> {

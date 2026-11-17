@@ -30,5 +30,30 @@
     ],
     "noPageErrors": true,
     "scope": "Real browser against the current Vite app, with EIP-1193 and JSON-RPC fixtures. No transaction signing or new public testnet writes."
+  },
+  "privateChallenge": {
+    "checkedAt": "2026-11-17T16:46:42.771Z",
+    "browser": "Headless Chrome",
+    "checks": [
+      "unknown network is added and selected",
+      "new plan requires a fresh private session",
+      "wallet rejection restores controls",
+      "signature and broadcast feedback include transaction link before confirmation",
+      "peer updates and older plans preserve matching participant secrets and lock receipts",
+      "browser completes both point-lock claims using real local EVM contracts",
+      "invalid proof is rejected without replacing current swap",
+      "new session clears secrets and generates a fresh offset",
+      "Arbitrum refund succeeds while Ethereum RPC is unavailable",
+      "browser completes both timeout refunds using independent chain clocks",
+      "no horizontal overflow at 320, 375, 768 and 1440 pixels"
+    ],
+    "noPageErrors": true,
+    "widths": [
+      320,
+      375,
+      768,
+      1440
+    ],
+    "scope": "Current Vite UI with injected EIP-1193 wallet and two independent local Hardhat EVM chains running actual contracts. Real transactions execute on local EVMs only. No MetaMask extension or public testnet browser signing."
   }
 }

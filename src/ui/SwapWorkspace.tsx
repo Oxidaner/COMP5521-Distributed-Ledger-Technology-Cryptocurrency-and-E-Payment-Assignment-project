@@ -7,6 +7,8 @@ import {
   type Chain, type ReceiptEvidence, type SwapPlan, type SwapState,
 } from "../../shared/protocol";
 import { switchMetaMaskNetwork } from "../../shared/wallet";
+import type { TransactionUpdate } from "../../shared/transactions";
+import { TransactionStatus } from "./TransactionStatus";
 
 const providers = { ethereum: new JsonRpcProvider(config.ethereumRpc), arbitrum: new JsonRpcProvider(config.arbitrumRpc) };
 
@@ -24,6 +26,7 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   const [chainErrors, setChainErrors] = useState<Partial<Record<Chain, string>>>({});
   const [balances, setBalances] = useState({ mst: "-", sepolia: "-", arbitrum: "-" });
   const [transactions, setTransactions] = useState<ReceiptEvidence[]>([]);
+  const [pending, setPending] = useState<TransactionUpdate | null>(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [verified, setVerified] = useState(false);
@@ -79,18 +82,19 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   }
 
   async function action(label: string, run: () => Promise<void>) {
-    setBusy(label); setMessage(`${label}: waiting for wallet or chain confirmation...`);
-    try { await run(); setMessage(`${label}: confirmed.`); }
+    setBusy(label); setMessage(`${label}: checking parameters...`); setPending(null);
+    try { await run(); setMessage(`${label}: completed.`); }
     catch (error) {
       const details = error as { shortMessage?: string; message?: string };
       setMessage(details.shortMessage ?? details.message ?? "Operation failed");
-    } finally { setBusy(""); }
+    } finally { setBusy(""); setPending(old => old?.stage === "signature" ? null : old); }
   }
 
   const progress = (event: ReceiptEvidence) => {
     setTransactions((old) => [...old, event]);
     setMessage(`${event.action} confirmed in block ${event.blockNumber}`);
   };
+  const observe = (event: TransactionUpdate) => setPending(event.stage === "confirmed" ? null : event);
 
   async function signer(chain: Chain) {
     if (!window.ethereum) throw new Error("Install MetaMask to sign transactions");
@@ -110,8 +114,8 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   async function lock(chain: Chain) {
     if (!plan) throw new Error("Prepare or import a plan first");
     const signing = await signer(chain);
-    const hash = chain === "ethereum" ? await lockMst(signing, providers.arbitrum, config, plan, progress)
-      : await lockEth(signing, providers.ethereum, config, plan, progress);
+    const hash = chain === "ethereum" ? await lockMst(signing, providers.arbitrum, config, plan, progress, observe)
+      : await lockEth(signing, providers.ethereum, config, plan, progress, observe);
     const next = { ...plan, ...(chain === "ethereum" ? { mstLockTx: hash } : { ethLockTx: hash }) };
     setPlan(next); void refresh(next);
   }
@@ -123,14 +127,14 @@ export function SwapWorkspace({ account }: { account: string | null }) {
       preimage = await revealedPreimage(providers.arbitrum, config, plan, claimTx);
       setSecret(preimage);
     }
-    const hash = await claimSwap(await signer(chain), providers[chain === "ethereum" ? "arbitrum" : "ethereum"], config, plan, chain, preimage, progress);
+    const hash = await claimSwap(await signer(chain), providers[chain === "ethereum" ? "arbitrum" : "ethereum"], config, plan, chain, preimage, progress, observe);
     if (chain === "arbitrum") setClaimTx(hash);
     void refresh();
   }
 
   async function refund(chain: Chain) {
     if (!plan) throw new Error("Select a plan");
-    await refundSwap(await signer(chain), config, plan, chain, progress); void refresh();
+    await refundSwap(await signer(chain), config, plan, chain, progress, observe); void refresh();
   }
 
   async function importPlan() {
@@ -181,7 +185,7 @@ export function SwapWorkspace({ account }: { account: string | null }) {
       <div className="state-grid">{(["ethereum", "arbitrum"] as const).map((chain) => <article key={chain}><strong>{chain === "ethereum" ? "Ethereum Sepolia / MST" : "Arbitrum Sepolia / ETH"}</strong><span className="state-value">{states[chain]?.phase ?? (chainErrors[chain] ? "Unavailable" : "Not loaded")}</span><small>{states[chain] ? `Block time: ${new Date(states[chain]!.timestamp * 1000).toLocaleTimeString()}` : "Refresh to query this chain"}</small>{chainErrors[chain] && <small role="alert">{chainErrors[chain]}</small>}<button disabled={!!busy || states[chain]?.phase !== "Expired" || role !== (chain === "ethereum" ? "Alice" : "Bob")} onClick={() => action(`Refund ${chain}`, () => refund(chain))}>Sender: refund after expiry</button></article>)}</div>
     </div>
     <p className="swap-feedback" role="status" aria-live="polite">{message || "Ready. Connect MetaMask, then refresh balances or prepare an exchange."}</p>
-    {transactions.length > 0 && <ol className="transaction-list">{transactions.map((tx) => <li key={tx.hash}>{tx.chain} / {tx.action}: <a href={`${explorers[tx.chain]}/tx/${tx.hash}`} target="_blank" rel="noreferrer">{tx.hash}</a> · block {tx.blockNumber}</li>)}</ol>}
+    <TransactionStatus pending={pending} confirmed={transactions} />
     <details><summary>Deployed contracts</summary><p className="swap-hint">MST: {config.mst}<br />ERC20HTLC: {config.erc20Htlc}<br />ETHHTLC: {config.ethHtlc}</p></details>
   </section>;
 }
