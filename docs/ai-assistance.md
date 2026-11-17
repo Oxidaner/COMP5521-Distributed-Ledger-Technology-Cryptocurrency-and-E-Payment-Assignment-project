@@ -5,7 +5,7 @@ The project owner requested direct implementation. The current project PDF does 
 | Work | Assistance supplied |
 | --- | --- |
 | Contracts | AI generated MST, ERC20HTLC and ETHHTLC constructors, lock/claim/refund functions, state/events/errors and local transfer-safety test fixtures. |
-| Protocol | AI generated `createPlan`, `validatePlan`, `checkChain`, `readSwap`, `assertLock`, `verifyLock`, `lockMst`, `lockEth`, `claimSwap`, `refundSwap`, `revealedPreimage` and receipt confirmation logic in `shared/protocol.ts`. |
+| Protocol | AI generated `createPlan`, `validatePlan`, `importSwap`, `checkChain`, `readSwap`, `assertLock`, `verifyLock`, `lockMst`, `lockEth`, `claimSwap`, `refundSwap`, `revealedPreimage` and receipt confirmation logic in `shared/protocol.ts`, including the review fixes and regression tests. |
 | Wallet/hash helpers | AI generated `createHashlockMaterial`, `connectMetaMask`, `parseChainId`, `switchMetaMaskNetwork` and their tests. |
 | Scripts | AI generated deployment/resume, CLI success/recovery/inspection, acceptance verification and submission packaging. With locally configured test accounts, the agent executed testnet deployment and both swap scenarios. |
 | Browser | AI generated the Dashboard and SwapWorkspace views, wallet/account listeners, refresh logic, plan/secret handling and action controls/styles. |

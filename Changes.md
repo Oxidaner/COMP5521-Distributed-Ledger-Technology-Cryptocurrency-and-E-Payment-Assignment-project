@@ -7,8 +7,9 @@ The Lab 4 example is a single-chain learning reference. This project implements 
 - Added shared TypeScript verification of confirmed lock receipts, escrow address, participants, asset, amount, hashlock, deadline and current state before counter-lock or claim. Ordered deadlines leave Bob time to claim MST after ETH reveals the preimage.
 - Added resumable deployments, saved private recovery jobs, repeatable success/recovery CLI commands, independent chain observation and sanitized public evidence.
 - Added MetaMask guided operation with network switching, balances, MST approval, public-plan exchange, private backup, revealed-secret extraction, errors, links and role/state-gated refund controls.
-- Added nine contract and six protocol tests, CI compile/test/build/evidence checks, strict final identity gate and allowlisted submission packaging.
+- Added nine contract and ten protocol tests, CI compile/test/build/evidence checks, strict final identity gate and allowlisted submission packaging.
 - Deployed all three contracts and completed success and recovery on the required public testnets on 17 November 2026. Public manifests contain receipts and final states.
 - Added the report, editable presentation and timed demonstration runbook. Live delivery, Q&A, real identity and verified student contribution remain personal assessment steps. Actual MetaMask signing needs a human rehearsal.
+- Review fixes preserve same-swap secrets and lock receipts on import, reject malformed plan fields before rendering, keep each chain's recovery controls available during an outage of the other RPC, and reject expired first-lock plans before approval and before escrow. Local and browser regressions cover these cases.
 
 The optional privacy challenge is not implemented. Shared hashlocks/preimages allow public linkage. One confirmation is used for testnet rehearsal, and the implementation does not provide production finality guarantees, automatic relaying, exchange-rate discovery or protection for arbitrary fee-on-transfer/rebasing tokens. The configured MST is a standard fixed-supply ERC20.

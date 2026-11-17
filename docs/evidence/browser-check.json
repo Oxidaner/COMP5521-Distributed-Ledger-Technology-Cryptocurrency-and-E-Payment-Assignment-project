@@ -16,5 +16,19 @@
     "malformed JSON feedback",
     "no horizontal overflow"
   ],
-  "limits": "No real MetaMask signing dialogs or browser transaction submission exercised."
+  "limits": "No real MetaMask signing dialogs or browser transaction submission exercised.",
+  "reviewRegressions": {
+    "checkedAt": "2026-11-17T07:15:58.403185+00:00",
+    "checks": [
+      "public import retains matching private secret",
+      "older private backup retains both lock transaction hashes",
+      "invalid field types are rejected without changing the active swap",
+      "expired first lock is disabled",
+      "healthy-chain refund remains available during other-chain RPC outage",
+      "manual refresh does not block refund",
+      "healthy-chain balance remains visible"
+    ],
+    "noPageErrors": true,
+    "scope": "Real browser against the current Vite app, with EIP-1193 and JSON-RPC fixtures. No transaction signing or new public testnet writes."
+  }
 }

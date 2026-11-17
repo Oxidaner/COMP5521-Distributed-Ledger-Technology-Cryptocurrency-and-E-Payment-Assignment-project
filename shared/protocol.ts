@@ -1,5 +1,5 @@
 import {
-  Contract, Interface, ZeroAddress, getAddress, hexlify, isHexString, keccak256,
+  Contract, Interface, MaxUint256, ZeroAddress, getAddress, hexlify, isHexString, keccak256,
   parseEther, randomBytes, type Provider, type Signer, type TransactionReceipt,
 } from "ethers";
 
@@ -40,13 +40,44 @@ export const chainIds = { ethereum: 11155111n, arbitrum: 421614n };
 export const explorers = { ethereum: "https://sepolia.etherscan.io", arbitrum: "https://sepolia.arbiscan.io" };
 const sameAddress = (a: string, b: string) => getAddress(a) === getAddress(b);
 
-export function validatePlan(plan: SwapPlan): void {
-  if (!isHexString(plan.swapId, 32) || /^0x0+$/.test(plan.swapId)) throw new Error("Invalid swap ID");
-  if (!isHexString(plan.hashlock, 32) || /^0x0+$/.test(plan.hashlock)) throw new Error("Invalid hashlock");
+export function validatePlan(value: unknown): asserts value is SwapPlan {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid swap plan");
+  const plan = value as Record<string, unknown>;
+  if (typeof plan.swapId !== "string" || !isHexString(plan.swapId, 32) || /^0x0+$/.test(plan.swapId)) throw new Error("Invalid swap ID");
+  if (typeof plan.hashlock !== "string" || !isHexString(plan.hashlock, 32) || /^0x0+$/.test(plan.hashlock)) throw new Error("Invalid hashlock");
+  if (typeof plan.alice !== "string" || typeof plan.bob !== "string") throw new Error("Invalid participant addresses");
   if (sameAddress(plan.alice, ZeroAddress) || sameAddress(plan.bob, ZeroAddress) || sameAddress(plan.alice, plan.bob)) throw new Error("Alice and Bob must be distinct nonzero addresses");
-  if (BigInt(plan.mstAmount) <= 0n || BigInt(plan.ethAmount) <= 0n) throw new Error("Amounts must be positive");
-  if (![plan.ethTimelock, plan.mstTimelock].every((v) => Number.isSafeInteger(v) && v > 0)) throw new Error("Invalid timelocks");
+  if (![plan.mstAmount, plan.ethAmount].every((amount) => typeof amount === "string" && /^[1-9]\d*$/.test(amount) && BigInt(amount) <= MaxUint256)) throw new Error("Amounts must be positive uint256 decimal strings");
+  if (typeof plan.ethTimelock !== "number" || typeof plan.mstTimelock !== "number"
+    || ![plan.ethTimelock, plan.mstTimelock].every((v) => Number.isSafeInteger(v) && v > 0)) throw new Error("Invalid timelocks");
   if (plan.mstTimelock <= plan.ethTimelock) throw new Error("MST deadline must be later than ETH deadline");
+  for (const hash of [plan.mstLockTx, plan.ethLockTx]) {
+    if (hash !== undefined && !isHexString(hash, 32)) throw new Error("Invalid lock transaction hash");
+  }
+}
+
+export function importSwap(value: unknown, current?: { plan: SwapPlan; preimage: string }): { plan: SwapPlan; preimage: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid swap import");
+  const imported = "plan" in value ? value.plan : value;
+  validatePlan(imported);
+  const plan: SwapPlan = {
+    swapId: imported.swapId.toLowerCase(), hashlock: imported.hashlock.toLowerCase(),
+    alice: getAddress(imported.alice), bob: getAddress(imported.bob),
+    mstAmount: imported.mstAmount, ethAmount: imported.ethAmount,
+    mstTimelock: imported.mstTimelock, ethTimelock: imported.ethTimelock,
+    mstLockTx: imported.mstLockTx, ethLockTx: imported.ethLockTx,
+  };
+  const supplied = "preimage" in value ? value.preimage : undefined;
+  if (supplied !== undefined && (typeof supplied !== "string" || !isHexString(supplied, 32) || keccak256(supplied) !== plan.hashlock)) throw new Error("Imported preimage does not match hashlock");
+  let preimage = typeof supplied === "string" ? supplied : "";
+  if (current?.plan.swapId.toLowerCase() === plan.swapId) {
+    const agreed = ["hashlock", "alice", "bob", "mstAmount", "ethAmount", "mstTimelock", "ethTimelock"] as const;
+    if (agreed.some((field) => String(current.plan[field]).toLowerCase() !== String(plan[field]).toLowerCase())) throw new Error("Imported plan changes the agreed swap parameters");
+    plan.mstLockTx ??= current.plan.mstLockTx;
+    plan.ethLockTx ??= current.plan.ethLockTx;
+    if (!preimage && isHexString(current.preimage, 32) && keccak256(current.preimage) === plan.hashlock) preimage = current.preimage;
+  }
+  return { plan, preimage };
 }
 
 export function createPlan(alice: string, bob: string, timestamp: number, mst = "10", eth = "0.001", ethDuration = 600, mstDuration = 1200): { plan: SwapPlan; preimage: string } {
@@ -113,17 +144,24 @@ async function confirm(tx: { hash: string; wait(): Promise<TransactionReceipt | 
   return receipt;
 }
 
-export async function lockMst(signer: Signer, config: Configuration, plan: SwapPlan, progress?: Progress): Promise<string> {
+export async function lockMst(signer: Signer, arbitrum: Provider, config: Configuration, plan: SwapPlan, progress?: Progress): Promise<string> {
   validatePlan(plan);
   if (!signer.provider) throw new Error("Signer has no provider");
-  await checkChain(signer.provider, "ethereum");
+  const ethereum = signer.provider;
+  await Promise.all([checkChain(ethereum, "ethereum"), checkChain(arbitrum, "arbitrum")]);
   if (!sameAddress(await signer.getAddress(), plan.alice)) throw new Error("Connect Alice to lock MST");
+  const checkDeadline = async () => {
+    const blocks = await Promise.all([ethereum.getBlock("latest"), arbitrum.getBlock("latest")]);
+    if (blocks.some((block) => !block || plan.ethTimelock <= block.timestamp)) throw new Error("ETH deadline has expired; prepare a new plan");
+  };
+  await checkDeadline();
   const escrow = new Contract(config.erc20Htlc, MST_ABI, signer);
   if (!sameAddress(await escrow.token(), config.mst)) throw new Error("Escrow MST address mismatch");
   const token = new Contract(config.mst, TOKEN_ABI, signer);
   if (await token.allowance(plan.alice, config.erc20Htlc) < BigInt(plan.mstAmount)) {
     await confirm(await token.approve(config.erc20Htlc, plan.mstAmount), "ethereum", "approve", progress);
   }
+  await checkDeadline();
   return (await confirm(await escrow.createSwap(plan.swapId, plan.bob, plan.mstAmount, plan.hashlock, plan.mstTimelock), "ethereum", "lock", progress)).hash;
 }
 

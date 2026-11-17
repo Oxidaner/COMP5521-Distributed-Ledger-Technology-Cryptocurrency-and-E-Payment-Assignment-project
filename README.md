@@ -28,7 +28,7 @@ npm run check:acceptance
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Nine contract tests cover successful transfers, validation, authorization, expiry boundaries, repeated completion, transfer failure rollback and receiver reentry. Six protocol tests include two separate simulated chains completing success and recovery; chain clocks advance independently. `npm run demo:local` runs the protocol tests without keys or test ETH.
+Open `http://127.0.0.1:5173`. Nine contract tests cover successful transfers, validation, authorization, expiry boundaries, repeated completion, transfer failure rollback and receiver reentry. Ten protocol tests include two separate simulated chains completing success and recovery, strict import validation, plan/secret merging and first-lock expiry checks before and after approval; chain clocks advance independently. `npm run demo:local` runs the protocol tests without keys or test ETH.
 
 `npm run check:acceptance` checks artifact/evidence consistency offline. Add `-- --live` to query the public testnets read-only and verify deployment code, transaction receipts and final states. Add `-- --submission` to require completed identity fields. CI never needs signing credentials. A passing check does not prove classroom performance or student contribution.
 
@@ -54,7 +54,7 @@ Update `src/public-config.json` when selecting a different deployment. This file
 5. Switch to Bob. Enter Alice's confirmed ETH claim hash and observe the secret to claim MST. Refresh both chains to see `Claimed / Claimed`.
 6. For recovery, create a separate swap, leave it unclaimed, show refund unavailable before expiry, then let Bob refund ETH and Alice refund MST after their respective chain deadlines. Both states become `Refunded`.
 
-The private backup contains the secret and must stay private until the ETH claim. Public plans contain only agreed parameters and lock hashes. Import the updated public plan before using a private secret if its saved plan predates the counter-lock. Page reload clears the active in-memory plan, so save updated backups/plans. See [the timed live runbook](docs/demo.md).
+The private backup contains the secret and must stay private until the ETH claim. Public plans contain only agreed parameters and lock hashes. Importing an updated plan for the same swap preserves a matching private secret; importing an older private backup preserves known lock hashes. Changes to the agreed parameters under the same swap ID are rejected. Page reload clears the active in-memory plan, so save updated backups/plans. State and balances refresh independently for each chain; an unavailable RPC is reported on that chain without blocking refunds on the other. Expired plans cannot start new locks, and the first lock rechecks both chain timestamps after approval. See [the timed live runbook](docs/demo.md).
 
 ## Script exchange and recovery
 

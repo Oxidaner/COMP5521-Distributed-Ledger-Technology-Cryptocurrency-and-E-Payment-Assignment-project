@@ -91,7 +91,7 @@ async function main(): Promise<void> {
       const token = new Contract(config.mst, TOKEN_ABI, providers.ethereum);
       if (await token.balanceOf(alice) < BigInt(job.plan.mstAmount)) throw new Error("Alice needs MST from the deploying account before locking");
       console.log(`Swap amounts: ${formatEther(job.plan.mstAmount)} MST / ${formatEther(job.plan.ethAmount)} ETH`);
-      await lockMst(signers.alice.ethereum, config, job.plan, progress);
+      await lockMst(signers.alice.ethereum, providers.arbitrum, config, job.plan, progress);
       await lockEth(signers.bob.arbitrum, providers.ethereum, config, job.plan, progress);
     }
     if (command === "success") {

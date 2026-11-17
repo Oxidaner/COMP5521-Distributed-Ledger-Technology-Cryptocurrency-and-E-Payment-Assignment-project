@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { BrowserProvider, Contract, JsonRpcProvider, formatEther, getAddress } from "ethers";
 import config from "../public-config.json";
 import {
-  TOKEN_ABI, claimSwap, createPlan, explorers, lockEth, lockMst, readSwap,
-  refundSwap, revealedPreimage, validatePlan, verifyLock,
+  TOKEN_ABI, claimSwap, createPlan, explorers, importSwap, lockEth, lockMst, readSwap,
+  refundSwap, revealedPreimage, verifyLock,
   type Chain, type ReceiptEvidence, type SwapPlan, type SwapState,
 } from "../../shared/protocol";
 import { switchMetaMaskNetwork } from "../../shared/wallet";
@@ -21,6 +21,7 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   const [importText, setImportText] = useState("");
   const [claimTx, setClaimTx] = useState("");
   const [states, setStates] = useState<Partial<Record<Chain, SwapState>>>({});
+  const [chainErrors, setChainErrors] = useState<Partial<Record<Chain, string>>>({});
   const [balances, setBalances] = useState({ mst: "-", sepolia: "-", arbitrum: "-" });
   const [transactions, setTransactions] = useState<ReceiptEvidence[]>([]);
   const [busy, setBusy] = useState("");
@@ -41,20 +42,40 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   async function refresh(current = plan) {
     const owner = account;
     const relevant = () => currentView.current.account === owner && currentView.current.swapId === current?.swapId;
+    const reads: Promise<void>[] = [];
     if (current) {
-      const [ethereum, arbitrum] = await Promise.all([
-        readSwap(providers.ethereum, config.erc20Htlc, current.swapId),
-        readSwap(providers.arbitrum, config.ethHtlc, current.swapId),
-      ]);
-      if (relevant()) setStates({ ethereum, arbitrum });
+      for (const chain of ["ethereum", "arbitrum"] as const) {
+        reads.push((async () => {
+          try {
+            const state = await readSwap(providers[chain], chain === "ethereum" ? config.erc20Htlc : config.ethHtlc, current.swapId);
+            if (relevant()) {
+              setStates((old) => ({ ...old, [chain]: state }));
+              setChainErrors((old) => ({ ...old, [chain]: undefined }));
+            }
+          } catch {
+            if (relevant()) {
+              setStates((old) => ({ ...old, [chain]: undefined }));
+              setChainErrors((old) => ({ ...old, [chain]: "State unavailable. Retry Refresh chains." }));
+            }
+          }
+        })());
+      }
     }
-    if (account) {
-      const [mst, sepolia, arbitrum] = await Promise.all([
-        new Contract(config.mst, TOKEN_ABI, providers.ethereum).balanceOf(account),
-        providers.ethereum.getBalance(account), providers.arbitrum.getBalance(account),
-      ]);
-      if (relevant()) setBalances({ mst: formatEther(mst), sepolia: formatEther(sepolia), arbitrum: formatEther(arbitrum) });
+    if (owner) {
+      const balancesToRead: [keyof typeof balances, Promise<bigint>][] = [
+        ["mst", new Contract(config.mst, TOKEN_ABI, providers.ethereum).balanceOf(owner)],
+        ["sepolia", providers.ethereum.getBalance(owner)],
+        ["arbitrum", providers.arbitrum.getBalance(owner)],
+      ];
+      for (const [asset, request] of balancesToRead) {
+        reads.push((async () => {
+          let amount = "-";
+          try { amount = formatEther(await request); } catch { /* Other balances remain available. */ }
+          if (relevant()) setBalances((old) => ({ ...old, [asset]: amount }));
+        })());
+      }
     } else setBalances({ mst: "-", sepolia: "-", arbitrum: "-" });
+    await Promise.all(reads);
   }
 
   async function action(label: string, run: () => Promise<void>) {
@@ -82,17 +103,17 @@ export function SwapWorkspace({ account }: { account: string | null }) {
     const [mstBlock, ethBlock] = await Promise.all([providers.ethereum.getBlock("latest"), providers.arbitrum.getBlock("latest")]);
     if (!mstBlock || !ethBlock) throw new Error("Latest blocks unavailable");
     const generated = createPlan(alice, bob, Math.max(mstBlock.timestamp, ethBlock.timestamp), mstAmount, ethAmount, short ? 90 : 600, short ? 180 : 1200);
-    setPlan(generated.plan); setSecret(generated.preimage); setStates({}); setTransactions([]); setVerified(false);
+    setPlan(generated.plan); setSecret(generated.preimage); setClaimTx(""); setStates({}); setChainErrors({}); setTransactions([]); setVerified(false);
     setMessage("Plan prepared. Save the private secret before locking; share only the public plan with Bob.");
   }
 
   async function lock(chain: Chain) {
     if (!plan) throw new Error("Prepare or import a plan first");
     const signing = await signer(chain);
-    const hash = chain === "ethereum" ? await lockMst(signing, config, plan, progress)
+    const hash = chain === "ethereum" ? await lockMst(signing, providers.arbitrum, config, plan, progress)
       : await lockEth(signing, providers.ethereum, config, plan, progress);
     const next = { ...plan, ...(chain === "ethereum" ? { mstLockTx: hash } : { ethLockTx: hash }) };
-    setPlan(next); await refresh(next);
+    setPlan(next); void refresh(next);
   }
 
   async function claim(chain: Chain) {
@@ -104,12 +125,19 @@ export function SwapWorkspace({ account }: { account: string | null }) {
     }
     const hash = await claimSwap(await signer(chain), providers[chain === "ethereum" ? "arbitrum" : "ethereum"], config, plan, chain, preimage, progress);
     if (chain === "arbitrum") setClaimTx(hash);
-    await refresh();
+    void refresh();
   }
 
   async function refund(chain: Chain) {
     if (!plan) throw new Error("Select a plan");
-    await refundSwap(await signer(chain), config, plan, chain, progress); await refresh();
+    await refundSwap(await signer(chain), config, plan, chain, progress); void refresh();
+  }
+
+  async function importPlan() {
+    const next = importSwap(JSON.parse(importText), plan ? { plan, preimage: secret } : undefined);
+    const sameSwap = plan?.swapId.toLowerCase() === next.plan.swapId;
+    setPlan(next.plan); setSecret(next.preimage); setVerified(false); setStates({}); setChainErrors({});
+    if (!sameSwap) { setClaimTx(""); setTransactions([]); }
   }
 
   function downloadSecret() {
@@ -119,8 +147,9 @@ export function SwapWorkspace({ account }: { account: string | null }) {
   }
 
   const role = account && plan ? getAddress(account) === getAddress(plan.alice) ? "Alice" : getAddress(account) === getAddress(plan.bob) ? "Bob" : "Observer" : "Not connected";
+  const planExpired = plan ? Object.values(states).some((state) => state && state.timestamp >= plan.ethTimelock) : false;
   return <section className="swap-workspace">
-    <div className="section-heading"><div><p className="eyebrow">03 / OPERATE THE SWAP</p><h2>Live exchange desk</h2></div><button className="wallet" disabled={!!busy} onClick={() => action("Refresh", () => refresh())}>Refresh chains</button></div>
+    <div className="section-heading"><div><p className="eyebrow">03 / OPERATE THE SWAP</p><h2>Live exchange desk</h2></div><button className="wallet" disabled={!!busy} onClick={() => void refresh()}>Refresh chains</button></div>
     <p className="swap-hint">Alice locks MST on Ethereum Sepolia. Bob verifies it and locks ETH on Arbitrum Sepolia. Alice claims ETH; Bob reads the revealed secret and claims MST.</p>
     <div className="balance-strip"><span>Current role: <strong>{role}</strong></span><span>MST {balances.mst}</span><span>Sepolia ETH {balances.sepolia}</span><span>Arbitrum ETH {balances.arbitrum}</span></div>
     <div className="swap-columns">
@@ -131,14 +160,15 @@ export function SwapWorkspace({ account }: { account: string | null }) {
         <label className="check-label"><input type="checkbox" checked={short} onChange={(e) => setShort(e.target.checked)} />Demo deadlines: ETH 90s / MST 180s (otherwise 600s / 1200s)</label>
         <button className="primary" disabled={!!busy} onClick={() => action("Prepare", prepare)}>Generate plan and secret</button>
         <label>Import public plan or private recovery file<textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste JSON here" /></label>
-        <button className="wallet" disabled={!!busy} onClick={() => action("Import", async () => { const parsed = JSON.parse(importText); const next = parsed.plan ?? parsed; validatePlan(next); setPlan(next); setSecret(parsed.preimage ?? ""); setClaimTx(""); setVerified(false); setStates({}); setTransactions([]); })}>Import plan</button>
+        <button className="wallet" disabled={!!busy} onClick={() => action("Import", importPlan)}>Import plan</button>
       </div>
       <div className="swap-card"><h3>2. Lock, verify and claim</h3>
         {plan ? <>
           <dl className="swap-details"><dt>Alice / Bob</dt><dd>{plan.alice}<br />{plan.bob}</dd><dt>Agreed amounts</dt><dd>{formatEther(plan.mstAmount)} MST / {formatEther(plan.ethAmount)} ETH</dd><dt>Swap ID</dt><dd>{plan.swapId}</dd><dt>Hashlock</dt><dd>{plan.hashlock}</dd><dt>ETH deadline</dt><dd>{new Date(plan.ethTimelock * 1000).toLocaleString()}</dd><dt>MST deadline</dt><dd>{new Date(plan.mstTimelock * 1000).toLocaleString()}</dd></dl>
-          <div className="swap-actions"><button disabled={!!busy || role !== "Alice" || ![undefined, "Missing"].includes(states.ethereum?.phase)} onClick={() => action("Lock MST", () => lock("ethereum"))}>Alice: approve and lock MST</button>
-          <button disabled={!!busy || !plan.mstLockTx} onClick={() => action("Verify MST lock", async () => { await verifyLock(providers.ethereum, config, plan, "ethereum"); setVerified(true); await refresh(); })}>Independently verify MST</button>
-          <button disabled={!!busy || role !== "Bob" || !verified || states.ethereum?.phase !== "Active" || ![undefined, "Missing"].includes(states.arbitrum?.phase)} onClick={() => action("Lock ETH", () => lock("arbitrum"))}>Bob: create matching ETH lock</button>
+          {planExpired && states.ethereum?.phase === "Missing" && <p className="swap-hint" role="alert">This plan's ETH deadline has expired. Generate a new plan before locking. Existing locks remain available for timeout recovery.</p>}
+          <div className="swap-actions"><button disabled={!!busy || role !== "Alice" || planExpired || states.ethereum?.phase !== "Missing" || !states.arbitrum} onClick={() => action("Lock MST", () => lock("ethereum"))}>Alice: approve and lock MST</button>
+          <button disabled={!!busy || !plan.mstLockTx} onClick={() => action("Verify MST lock", async () => { await verifyLock(providers.ethereum, config, plan, "ethereum"); setVerified(true); void refresh(); })}>Independently verify MST</button>
+          <button disabled={!!busy || role !== "Bob" || planExpired || !verified || states.ethereum?.phase !== "Active" || ![undefined, "Missing"].includes(states.arbitrum?.phase)} onClick={() => action("Lock ETH", () => lock("arbitrum"))}>Bob: create matching ETH lock</button>
           <button disabled={!!busy || role !== "Alice" || !secret || !plan.ethLockTx || states.arbitrum?.phase !== "Active" || states.ethereum?.phase !== "Active"} onClick={() => action("Claim ETH", () => claim("arbitrum"))}>Alice: verify and claim ETH</button></div>
           <label>ETH claim transaction hash<input value={claimTx} onChange={(e) => setClaimTx(e.target.value)} placeholder="0x... from Alice's confirmed ETH claim" /></label>
           <button className="wallet" disabled={!!busy || role !== "Bob" || !claimTx || states.ethereum?.phase !== "Active"} onClick={() => action("Read revealed secret and claim MST", () => claim("ethereum"))}>Bob: observe secret and claim MST</button>
@@ -148,7 +178,7 @@ export function SwapWorkspace({ account }: { account: string | null }) {
       </div>
     </div>
     <div className="swap-card recovery-card"><h3>3. Independent status and timeout recovery</h3><p className="swap-hint">Refresh to read each chain's latest block time. Claim/refund availability depends on its current state and connected account.</p>
-      <div className="state-grid">{(["ethereum", "arbitrum"] as const).map((chain) => <article key={chain}><strong>{chain === "ethereum" ? "Ethereum Sepolia / MST" : "Arbitrum Sepolia / ETH"}</strong><span className="state-value">{states[chain]?.phase ?? "Not loaded"}</span><small>{states[chain] ? `Block time: ${new Date(states[chain]!.timestamp * 1000).toLocaleTimeString()}` : "Refresh to query this chain"}</small><button disabled={!!busy || states[chain]?.phase !== "Expired" || role !== (chain === "ethereum" ? "Alice" : "Bob")} onClick={() => action(`Refund ${chain}`, () => refund(chain))}>Sender: refund after expiry</button></article>)}</div>
+      <div className="state-grid">{(["ethereum", "arbitrum"] as const).map((chain) => <article key={chain}><strong>{chain === "ethereum" ? "Ethereum Sepolia / MST" : "Arbitrum Sepolia / ETH"}</strong><span className="state-value">{states[chain]?.phase ?? (chainErrors[chain] ? "Unavailable" : "Not loaded")}</span><small>{states[chain] ? `Block time: ${new Date(states[chain]!.timestamp * 1000).toLocaleTimeString()}` : "Refresh to query this chain"}</small>{chainErrors[chain] && <small role="alert">{chainErrors[chain]}</small>}<button disabled={!!busy || states[chain]?.phase !== "Expired" || role !== (chain === "ethereum" ? "Alice" : "Bob")} onClick={() => action(`Refund ${chain}`, () => refund(chain))}>Sender: refund after expiry</button></article>)}</div>
     </div>
     <p className="swap-feedback" role="status" aria-live="polite">{message || "Ready. Connect MetaMask, then refresh balances or prepare an exchange."}</p>
     {transactions.length > 0 && <ol className="transaction-list">{transactions.map((tx) => <li key={tx.hash}>{tx.chain} / {tx.action}: <a href={`${explorers[tx.chain]}/tx/${tx.hash}`} target="_blank" rel="noreferrer">{tx.hash}</a> · block {tx.blockNumber}</li>)}</ol>}
