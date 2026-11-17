@@ -1,0 +1,7 @@
+{
+  "mst": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+  "erc20Htlc": "0xd3CBcA8CA30513945D3e8ae8190634432e3F8f47",
+  "ethHtlc": "0x220202AAc9C7f75cCfeA5780C62b06B71fbaAA71",
+  "ethereumRpc": "https://ethereum-sepolia-rpc.publicnode.com",
+  "arbitrumRpc": "https://sepolia-rollup.arbitrum.io/rpc"
+}

@@ -1,48 +1,33 @@
-# Five-person workspace
+# Solo workflow
 
-Replace Member 1-5 with names in `docs/contributions.md`. Each person owns
-code or testable analysis as well as review and presentation duties.
+This project is being completed by one student. The five-person role table is
+not applicable. Record the student's actual name, ID and verified work in
+`docs/contributions.md` before submission; never invent evidence.
 
-| Person | Primary deliverable | Acceptance evidence | Review handoff |
-| --- | --- | --- | --- |
-| Member 1 | `ERC20HTLC.sol`, MST approval/escrow contract tests (A1, A3-A5) | Invalid/duplicate lock, claim and refund test results | Reviews Member 2's transfer/state safety |
-| Member 2 | `ETHHTLC.sol`, native-ETH contract tests (A2-A5) | Value, deadline, reentrancy and state-transition test results | Reviews Member 1's token accounting |
-| Member 3 | Deployment/configuration and secret/lock/verification/claim scripts (B1-B2) | Confirmed transactions and both-chain parameter comparison | Reviews Member 5's observation/recovery |
-| Member 4 | Browser wallet, network switch, balances and guided claim flow (C1-C3) | Wallet walkthrough on both testnets, transaction links/errors | Reviews Member 3's public protocol interface |
-| Member 5 | Independent state inspection, expiry/refund scripts and UI recovery integration (B3-B4, C3-C4) | Status matrix, timeout/refund test and live recovery trace | Reviews Member 4's invalid-action handling |
+## Delivery sequence
 
-Everyone contributes to Task D (report, slides, explanations), attends the
-Task E live demo and Q&A, and records Task F evidence. Member 5 coordinates
-integration, but every owner writes their own contribution and explains it.
-No role implies a fabricated contribution before the code exists.
+1. Complete and test ERC20 escrow and native ETH escrow independently.
+2. Connect two independent local networks and test success, invalid actions
+   and timeout recovery.
+3. Deploy the token and both escrows to their required testnets.
+4. Implement the wallet UI against live chain state and rehearse both demos.
+5. Complete the report, slides, changes record and contribution table from
+   measured results.
 
-## Shared work rules
+Keep credentials in ignored `.env`. The browser uses MetaMask and must not
+bundle signing keys. Keep each work unit small enough to understand and test;
+record specific AI-assisted functions in `docs/ai-assistance.md`.
 
-1. Open one issue per deliverable with the acceptance item IDs and owner.
-   Agree on the cross-module interface in `docs/architecture.md`.
-2. Branch from `main` using a descriptive name such as `erc20-escrow` or
-   `refund-observer`. Each PR is small enough for another owner to review.
-3. In the PR template, link the issue, describe tests and public testnet
-   transactions, list unfinished cases, and disclose any AI-assisted
-   functions. A different member reviews before merge.
-4. Keep secrets and RPC credentials out of Git. Store only placeholders in
-   `.env.example`; the browser uses a connected wallet.
-5. Update `README.md` commands and addresses, `Changes.md`, and the
-   contribution table as work lands. Record completed and missing acceptance
-   items in `.agent/acceptance.md`.
+## Milestones
 
-GitHub's branch rules and collaborator invites are repository settings,
-not files. Once the five GitHub usernames and a running CI check are known,
-protect `main` with pull requests, one other-member approval and the `CI`
-checks (`workspace` and `implementation`). Confirm these settings in GitHub
-after the workflow is published.
+| Milestone | Exit evidence |
+| --- | --- |
+| A: Escrows | Both contracts compile; positive and negative tests cover A1-A5 |
+| B: Protocol | Reproducible confirmed locks, independent observation, claims and refunds |
+| C: Interface | MetaMask workflow, current state, progress, links, errors and recovery |
+| D: Report | Six-page maximum body, slides and accurately reported test evidence |
+| E: Demonstration | Live four-minute success and recovery runs on the required testnets |
+| F: Contribution | One student's real work, name, ID and verifiable evidence |
 
-## Presentation handoff
-
-Prepare funded Alice/Bob accounts, deployed addresses and tested RPCs before
-27 November 2026. Rehearse separate success and short-deadline refund
-instances: attempt the invalid early refund while its lock is active, then
-refund it after expiry. Do not deploy during the demo. Presentation:
-27 November 2026, 18:30-21:30, FJ303 (four minutes
-slides, four minutes live, two minutes Q&A per group). Submit the archive
-via Canvas before 4 December 2026, 23:59 (course specification).
+Presentation/demo: 27 November 2026, 18:30-21:30, FJ303. Canvas archive:
+before 4 December 2026, 23:59.

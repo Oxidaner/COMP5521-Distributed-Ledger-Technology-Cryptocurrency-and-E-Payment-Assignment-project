@@ -1,0 +1,78 @@
+{
+  "scenario": "success",
+  "observedAt": "2026-11-17T06:05:27.770Z",
+  "config": {
+    "mst": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+    "erc20Htlc": "0xd3CBcA8CA30513945D3e8ae8190634432e3F8f47",
+    "ethHtlc": "0x220202AAc9C7f75cCfeA5780C62b06B71fbaAA71"
+  },
+  "plan": {
+    "swapId": "0x442bff88018f6fc02d96e26d0eac2e1454721f7718a2626fc1d35357e17f566a",
+    "hashlock": "0x110f1735e26ec2571127706a8d9a195fb9d8a13fdb5b836499ee0c29844b8ac9",
+    "alice": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+    "bob": "0x055adFd1D01e2135835F521F300294ee0D3961b8",
+    "mstAmount": "1000000000000000000",
+    "ethAmount": "100000000000000",
+    "mstTimelock": 1794896662,
+    "ethTimelock": 1794896062,
+    "mstLockTx": "0xd734349dc8c66e0c4d0760d53d73178582037caa12c64e8af6260b6620063fd2",
+    "ethLockTx": "0xe8ab9f1592f2f38b8e7d0c393e42d3e7cb4365f4871a2ef0d4e017329c847f3b"
+  },
+  "transactions": [
+    {
+      "chain": "ethereum",
+      "hash": "0x6a67e20d10edbf52ff760c52b524b9f3ab032f66188d6a12628a4ad5145a164b",
+      "blockNumber": 12152508,
+      "action": "approve"
+    },
+    {
+      "chain": "ethereum",
+      "hash": "0xd734349dc8c66e0c4d0760d53d73178582037caa12c64e8af6260b6620063fd2",
+      "blockNumber": 12152509,
+      "action": "lock"
+    },
+    {
+      "chain": "arbitrum",
+      "hash": "0xe8ab9f1592f2f38b8e7d0c393e42d3e7cb4365f4871a2ef0d4e017329c847f3b",
+      "blockNumber": 330009720,
+      "action": "lock"
+    },
+    {
+      "chain": "arbitrum",
+      "hash": "0x72f93e9aaf576993e974ff0e86f102f0da80c0c5d1c5b8f978cfaa8cc59ef742",
+      "blockNumber": 330009759,
+      "action": "claim"
+    },
+    {
+      "chain": "ethereum",
+      "hash": "0x614345d5f064fde8d4196616bfe81fe8f50b14382059373981707664037516a6",
+      "blockNumber": 12152512,
+      "action": "claim"
+    }
+  ],
+  "earlyRefundRejected": false,
+  "states": {
+    "ethereum": {
+      "sender": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+      "receiver": "0x055adFd1D01e2135835F521F300294ee0D3961b8",
+      "token": "0xF84f6b13121161b9e8351D407AE30b160d22A611",
+      "amount": "1000000000000000000",
+      "hashlock": "0x110f1735e26ec2571127706a8d9a195fb9d8a13fdb5b836499ee0c29844b8ac9",
+      "timelock": 1794896662,
+      "status": 1,
+      "timestamp": 1794895524,
+      "phase": "Claimed"
+    },
+    "arbitrum": {
+      "sender": "0x055adFd1D01e2135835F521F300294ee0D3961b8",
+      "receiver": "0x07F47d62dE0c7E30Cd68bbf3f67C6cF6fC855C39",
+      "token": "0x0000000000000000000000000000000000000000",
+      "amount": "100000000000000",
+      "hashlock": "0x110f1735e26ec2571127706a8d9a195fb9d8a13fdb5b836499ee0c29844b8ac9",
+      "timelock": 1794896062,
+      "status": 1,
+      "timestamp": 1794895526,
+      "phase": "Claimed"
+    }
+  }
+}

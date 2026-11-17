@@ -1,0 +1,37 @@
+{
+  "name": "comp5521-cross-chain-htlc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.14.0 <25" },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test:contracts": "npm run compile && tsx scripts/run-acceptance-tests.ts test/contracts.test.ts",
+    "test:protocol": "npm run compile && tsx scripts/run-acceptance-tests.ts test/protocol.test.ts",
+    "test": "npm run test:contracts && npm run test:protocol",
+    "typecheck": "tsc --noEmit",
+    "build:web": "tsc --noEmit && vite build",
+    "dev": "vite",
+    "deploy": "tsx --env-file-if-exists=.env scripts/deploy.ts",
+    "protocol": "tsx --env-file-if-exists=.env scripts/cli.ts",
+    "demo:local": "npm run test:protocol",
+    "check:acceptance": "tsx scripts/check-acceptance.ts",
+    "package:submission": "tsx scripts/package-submission.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.6.1",
+    "ethers": "6.17.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "4.2.2",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "hardhat": "3.22.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "8.3.8"
+  }
+}

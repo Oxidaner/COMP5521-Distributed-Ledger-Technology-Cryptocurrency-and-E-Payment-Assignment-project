@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-17T06:21:59.514Z",
+  "browser": "Headless Chrome",
+  "widths": [
+    320,
+    375,
+    768,
+    1440
+  ],
+  "noPageErrors": true,
+  "checks": [
+    "missing-wallet feedback",
+    "plan generation using live public RPC block times",
+    "import public success plan and read Claimed/Claimed",
+    "import public recovery plan and read Refunded/Refunded",
+    "malformed JSON feedback",
+    "no horizontal overflow"
+  ],
+  "limits": "No real MetaMask signing dialogs or browser transaction submission exercised."
+}
