@@ -1,0 +1,27 @@
+
+> comp5521-cross-chain-htlc@0.1.0 test:contracts
+> npm run compile && tsx scripts/run-acceptance-tests.ts test/contracts.test.ts
+
+
+> comp5521-cross-chain-htlc@0.1.0 compile
+> hardhat compile
+
+No contracts to compile
+✔ ERC20HTLC locks and claims exactly once (36.12075ms)
+✔ ERC20HTLC rejects a missing MST contract at deployment (3.278125ms)
+✔ ERC20HTLC only refunds the sender after expiry (8.622917ms)
+✔ ETHHTLC transfers ETH to the designated receiver on claim (3.810167ms)
+✔ ETHHTLC refunds after expiry and validates lock parameters (3.452042ms)
+✔ local network configurations keep the required chain IDs (4.949542ms)
+✔ ERC20 validates inputs, missing swaps and exact expiry boundaries (14.560083ms)
+✔ ETH validates inputs, missing swaps and exact expiry boundaries (13.70075ms)
+✔ ETH transfer failure rolls back claim/refund and receiver reentry cannot drain escrow (10.922042ms)
+✔ SafeERC20 failure rolls back lock, claim and refund without losing the active record (9.763667ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 497.378666

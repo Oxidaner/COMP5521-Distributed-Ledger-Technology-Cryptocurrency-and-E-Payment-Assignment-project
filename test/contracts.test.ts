@@ -88,11 +88,67 @@ test("ETHHTLC transfers ETH to the designated receiver on claim", async () => {
   const timelock = BigInt(block!.timestamp) + 30n;
   const before = await ethers.provider.getBalance(bob.address);
 
-  await htlc.createSwap(swapId, bob.address, keccak256(preimage), timelock, { value: amount });
-  await htlc.connect(bob).claim(swapId, preimage);
+  const lockTx = await htlc.createSwap(
+    swapId,
+    bob.address,
+    keccak256(preimage),
+    timelock,
+    { value: amount },
+  );
+  const lockReceipt = await lockTx.wait();
+  assert(lockReceipt !== null);
+
+  // AI-assisted assertions: verify all SwapCreated event fields.
+  const createdEvent = lockReceipt.logs
+    .map((log: { topics: string[]; data: string }) => {
+      try {
+        return htlc.interface.parseLog(log);
+      } catch {
+        return null;
+      }
+    })
+    .find((event: { name: string } | null) => event?.name === "SwapCreated");
+
+  assert(createdEvent != null, "SwapCreated event must exist");
+  assert.equal(createdEvent.args.swapId, swapId);
+  assert.equal(createdEvent.args.sender, alice.address);
+  assert.equal(createdEvent.args.receiver, bob.address);
+  assert.equal(createdEvent.args.token, ZeroAddress);
+  assert.equal(createdEvent.args.amount, amount);
+  assert.equal(createdEvent.args.hashlock, keccak256(preimage));
+  assert.equal(createdEvent.args.timelock, timelock);
+
+  // AI-assisted assertions: verify ETH escrow fields and locked balance.
+  const record = await htlc.swaps(swapId);
+  assert.equal(record.sender, alice.address);
+  assert.equal(record.receiver, bob.address);
+  assert.equal(record.token, ZeroAddress);
+  assert.equal(record.amount, amount);
+  assert.equal(record.hashlock, keccak256(preimage));
+  assert.equal(record.timelock, timelock);
+  assert.equal(record.status, 0n);
+  assert.equal(await ethers.provider.getBalance(htlc.target), amount);
+  // AI-assisted assertions: verify the exact payout after transaction fees.
+  const claimTx = await htlc.connect(bob).claim(swapId, preimage);
+  const claimReceipt = await claimTx.wait();
+  assert(claimReceipt !== null);
+
   const after = await ethers.provider.getBalance(bob.address);
-  assert(after > before);
+  const fee = BigInt(claimReceipt.gasUsed) * BigInt(claimReceipt.gasPrice);
+
+  assert.equal(after, before + amount - fee);
+  assert.equal(await ethers.provider.getBalance(htlc.target), 0n);
   assert.equal((await htlc.swaps(swapId)).status, 1n);
+  // AI-assisted assertion: reject a second claim by the designated receiver.
+  await expectRevert(
+    htlc.connect(bob).claim(swapId, preimage),
+    "NotActive",
+  );
+  // AI-assisted assertion: reject refund after a successful claim.
+  await expectRevert(
+    htlc.connect(alice).refund(swapId),
+    "NotActive",
+  );
 });
 
 test("ETHHTLC refunds after expiry and validates lock parameters", async () => {
@@ -101,7 +157,11 @@ test("ETHHTLC refunds after expiry and validates lock parameters", async () => {
   const swapId = id("eth-refund");
   const block = await ethers.provider.getBlock("latest");
   const timelock = BigInt(block!.timestamp) + 15n;
-
+  // AI-assisted assertion: reject refund for a nonexistent swap.
+  await expectRevert(
+    htlc.refund(swapId),
+    "SwapNotFound",
+  );
   await expectRevert(
     htlc.createSwap(`0x${"00".repeat(32)}`, bob.address, keccak256(`0x${"55".repeat(32)}`), timelock, { value: 1n }),
     "InvalidSwapId",
@@ -111,9 +171,34 @@ test("ETHHTLC refunds after expiry and validates lock parameters", async () => {
     "InvalidAmount",
   );
   await htlc.createSwap(swapId, bob.address, keccak256(`0x${"55".repeat(32)}`), timelock, { value: 1n });
-  await future(16);
-  await htlc.refund(swapId);
+
+  // AI-assisted assertions: verify the exact refund after transaction fees.
+  const beforeRefund = await ethers.provider.getBalance(alice.address);
+  const lockedAmount = (await htlc.swaps(swapId)).amount;
+
+  // AI-assisted boundary check: mine the refund exactly at expiry.
+  await ethers.provider.send("evm_setNextBlockTimestamp", [Number(timelock)]);
+  const refundTx = await htlc.connect(alice).refund(
+    swapId,
+    { gasLimit: 300000 },
+  );
+  const refundReceipt = await refundTx.wait();
+  assert(refundReceipt !== null);
+  const refundBlock = await ethers.provider.getBlock(refundReceipt.blockNumber);
+  assert(refundBlock !== null);
+  assert.equal(BigInt(refundBlock.timestamp), timelock);
+  const afterRefund = await ethers.provider.getBalance(alice.address);
+  const refundFee =
+  BigInt(refundReceipt.gasUsed) * BigInt(refundReceipt.gasPrice);
+
+  assert.equal(afterRefund, beforeRefund + lockedAmount - refundFee);
+  assert.equal(await ethers.provider.getBalance(htlc.target), 0n);
   assert.equal((await htlc.swaps(swapId)).status, 2n);
+  // AI-assisted assertion: reject claim after a successful refund.
+  await expectRevert(
+    htlc.connect(bob).claim(swapId, `0x${"55".repeat(32)}`),
+    "NotActive",
+  );
 });
 
 test("local network configurations keep the required chain IDs", async () => {
@@ -232,4 +317,79 @@ test("SafeERC20 failure rolls back lock, claim and refund without losing the act
     await escrow.getFunction("refund")(swapId);
     assert.equal(await token.getFunction("balanceOf")(alice.address), 1000n);
   } finally { await connection.close(); }
+});
+// AI-assisted test: verify isolation between two ETH swaps.
+test("ETHHTLC keeps concurrent swaps isolated through claim and refund", async () => {
+  const connection = await network.create("ethLocal");
+
+  try {
+    const api = connection.ethers;
+    const [alice, bob, carol] = await api.getSigners();
+    const htlc = await api.deployContract("ETHHTLC");
+
+    const firstId = id("eth-isolation-first");
+    const secondId = id("eth-isolation-second");
+    const firstSecret = `0x${"99".repeat(32)}`;
+    const secondSecret = `0x${"aa".repeat(32)}`;
+    const firstAmount = parseEther("1");
+    const secondAmount = parseEther("2");
+
+    const block = await api.provider.getBlock("latest");
+    assert(block !== null);
+    const expiry = block.timestamp + 300;
+
+    // Alice locks the first swap for Bob.
+    await (
+      await htlc.connect(alice).getFunction("createSwap")(
+        firstId, bob.address, keccak256(firstSecret), expiry,
+        { value: firstAmount },
+      )
+    ).wait();
+
+    // Carol independently locks the second swap for Alice.
+    await (
+      await htlc.connect(carol).getFunction("createSwap")(
+        secondId, alice.address, keccak256(secondSecret), expiry,
+        { value: secondAmount },
+      )
+    ).wait();
+
+    assert.equal(
+      await api.provider.getBalance(htlc.target),
+      firstAmount + secondAmount,
+    );
+
+    const secondBefore = await htlc.getFunction("swaps")(secondId);
+    assert.equal(secondBefore.status, 0n);
+
+    // Bob claims only the first swap.
+    await (
+      await htlc.connect(bob).getFunction("claim")(firstId, firstSecret)
+    ).wait();
+
+    assert.equal((await htlc.getFunction("swaps")(firstId)).status, 1n);
+    assert.equal(
+      await api.provider.getBalance(htlc.target),
+      secondAmount,
+    );
+
+    // Every field of the second swap must remain unchanged.
+    const secondAfter = await htlc.getFunction("swaps")(secondId);
+    assert.deepEqual(Array.from(secondAfter), Array.from(secondBefore));
+
+    // At expiry, Carol refunds only the second swap.
+    await api.provider.send("evm_setNextBlockTimestamp", [expiry]);
+    await (
+      await htlc.connect(carol).getFunction("refund")(
+        secondId,
+        { gasLimit: 300000 },
+      )
+    ).wait();
+
+    assert.equal((await htlc.getFunction("swaps")(secondId)).status, 2n);
+    assert.equal((await htlc.getFunction("swaps")(firstId)).status, 1n);
+    assert.equal(await api.provider.getBalance(htlc.target), 0n);
+  } finally {
+    await connection.close();
+  }
 });
