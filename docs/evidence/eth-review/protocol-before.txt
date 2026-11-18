@@ -1,0 +1,27 @@
+
+> comp5521-cross-chain-htlc@0.1.0 test:protocol
+> npm run compile && tsx scripts/run-acceptance-tests.ts test/protocol.test.ts
+
+
+> comp5521-cross-chain-htlc@0.1.0 compile
+> hardhat compile
+
+No contracts to compile
+✔ creates a bytes32 preimage and its matching hashlock (1.293208ms)
+✔ connects to MetaMask and returns the checksummed account and chain ID (1.18ms)
+✔ rejects missing wallet and missing account (0.243833ms)
+✔ switches MetaMask to the requested assignment network (0.108875ms)
+✔ parses valid hexadecimal chain IDs and rejects malformed values (0.074208ms)
+✔ imported plans reject invalid field types before reaching the view (4.115416ms)
+✔ public updates and older private backups preserve the secret and both lock receipts (1.124458ms)
+✔ imports reject changed agreements and incorrect private values, and isolate new swaps (1.160208ms)
+✔ an expired counter-lock deadline cannot approve or escrow MST (178.759833ms)
+✔ two independent chains complete a verified atomic swap and timeout recovery (31.085375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 503.175708
