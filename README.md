@@ -47,6 +47,8 @@ Update `src/public-config.json` when selecting a different deployment. This file
 
 ## Browser exchange
 
+中文逐步操作见 [项目操作说明](docs/user-guide-zh.md)，包括单人账户切换、双方资料交接、成功兑换、超时退款和隐私 Challenge。
+
 1. Connect Alice in MetaMask. Enter Alice and Bob addresses, 1 MST and 0.0001 ETH. Generate a plan and save the private backup before locking. Default deadlines are ETH 600s / MST 1200s. The demo checkbox uses 90s / 180s, which requires prompt operation.
 2. Alice approves and locks MST on Ethereum Sepolia. Share the public plan after the confirmed MST lock so it includes `mstLockTx`.
 3. Switch to Bob. Import the plan if using another browser, independently verify MST, and create the matching ETH lock on Arbitrum Sepolia. Share the updated public plan with Alice if using separate browsers.
