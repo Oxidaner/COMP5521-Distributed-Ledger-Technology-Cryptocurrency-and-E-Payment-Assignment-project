@@ -50,6 +50,12 @@ test("ERC20HTLC locks and claims exactly once", async () => {
   await expectRevert(htlc.connect(alice).refund(swapId), "NotActive");
 });
 
+test("ERC20HTLC rejects a missing MST contract at deployment", async () => {
+  const [alice] = await ethers.getSigners();
+  await expectRevert(ethers.deployContract("ERC20HTLC", [ZeroAddress]), "InvalidToken");
+  await expectRevert(ethers.deployContract("ERC20HTLC", [alice.address]), "InvalidToken");
+});
+
 test("ERC20HTLC only refunds the sender after expiry", async () => {
   const [alice, bob, stranger] = await ethers.getSigners();
   const mst = await ethers.deployContract("MST", [parseEther("100")], alice) as any;
