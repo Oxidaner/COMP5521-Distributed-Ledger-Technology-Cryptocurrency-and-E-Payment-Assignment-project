@@ -25,6 +25,7 @@ contract ERC20HTLC is ReentrancyGuard {
 
     error InvalidSwapId();
     error InvalidReceiver();
+    error InvalidToken();
     error InvalidAmount();
     error InvalidHashlock();
     error InvalidTimelock();
@@ -48,8 +49,9 @@ contract ERC20HTLC is ReentrancyGuard {
     event SwapClaimed(bytes32 indexed swapId, bytes32 preimage);
     event SwapRefunded(bytes32 indexed swapId);
 
+    // AI-assisted: reject token addresses that cannot represent a deployed MST contract.
     constructor(address tokenAddress) {
-        if (tokenAddress == address(0)) revert InvalidReceiver();
+        if (tokenAddress == address(0) || tokenAddress.code.length == 0) revert InvalidToken();
         token = IERC20(tokenAddress);
     }
 
