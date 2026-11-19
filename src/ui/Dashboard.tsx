@@ -1,9 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { getAddress } from "ethers";
 import { connectMetaMask, parseChainId, switchMetaMaskNetwork } from "../../shared/wallet";
 import { SwapWorkspace } from "./SwapWorkspace";
 import { PrivateWorkspace } from "./PrivateWorkspace";
+import { Scene3D } from "./Scene3D";
+import { useTiltEffect } from "./effects";
+import { ChainGlyph, EmptyGlyph, Icon, shortHex } from "./parts";
 import config from "../public-config.json";
+
+const tabs = {
+  overview: {
+    label: "Overview",
+    eyebrow: "YOUR ACTIVITY",
+    title: "Swap overview",
+    note: "Both escrows are live on public test networks. Connect MetaMask to see your role, balances and network.",
+  },
+  create: {
+    label: "New exchange",
+    eyebrow: "NEW EXCHANGE",
+    title: "Prepare an exchange",
+    note: "Agree on addresses and amounts, generate the secret, then lock MST first. Bob counter-locks only after verifying it.",
+  },
+  recover: {
+    label: "Recovery",
+    eyebrow: "TIMEOUT TOOLS",
+    title: "Recover locked assets",
+    note: "Import the public plan or your private backup. Each sender can refund once its own deadline has passed.",
+  },
+} as const;
+
+const protocolSteps = [
+  { index: "01", icon: "lock", chain: "ethereum", title: "Lock MST", body: "Alice locks MST in the ERC20 escrow under H = keccak256(secret). Only the hash is public." },
+  { index: "02", icon: "shield", chain: "arbitrum", title: "Verify & counter-lock", body: "Bob independently verifies the MST lock, then locks ETH with the same hashlock and an earlier deadline." },
+  { index: "03", icon: "key", chain: "arbitrum", title: "Claim ETH", body: "Alice claims ETH with the secret, which publishes it on Arbitrum Sepolia." },
+  { index: "04", icon: "check", chain: "ethereum", title: "Claim MST", body: "Bob reads the revealed secret from Alice's claim and takes MST. A missed deadline refunds each sender." },
+] as const;
 
 export function Dashboard() {
   const [account, setAccount] = useState<string | null>(null);
@@ -68,88 +99,194 @@ export function Dashboard() {
         ? "Wallet not connected"
         : `Unsupported network (${chainId})`;
 
+  useTiltEffect();
+
+  const tab = tabs[active];
+  const walletChain = chainId === 11155111 ? "ethereum" : chainId === 421614 ? "arbitrum" : chainId === null ? "none" : "unsupported";
+  const avatarHue = account ? parseInt(account.slice(2, 6), 16) % 360 : 250;
+
   return (
-    <main className="shell">
+    <>
+      <div className="backdrop" aria-hidden="true">
+        <span className="aurora a1" /><span className="aurora a2" /><span className="aurora a3" />
+        <span className="stars" /><span className="noise" />
+      </div>
+
       <header className="topbar">
-        <a className="brand" href="#overview"><span className="brand-mark">H</span><span>HTLC / COMP5521</span></a>
-        <div className="top-actions">
-          <span className="network"><i />Sepolia pair</span>
-          {account && <span className="wallet-chain">{chainName}</span>}
-          <button className="wallet" onClick={handleConnectWallet}>
-            {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect wallet"}
-          </button>
+        <div className="shell topbar-inner">
+          <a className="brand" href="#top" aria-label="HTLC / COMP5521 home">
+            <span className="brand-cube" aria-hidden="true"><span><i /><i /><i /><i /><i /><i /></span></span>
+            <span className="brand-text"><strong>HTLC</strong><small>COMP5521</small></span>
+          </a>
+          <nav className="top-nav" aria-label="Sections">
+            <a href="#overview">Overview</a>
+            <a href="#protocol">Protocol</a>
+            <a href="#live-exchange">Exchange</a>
+            <a href="#private-exchange">Private</a>
+          </nav>
+          <div className="top-actions">
+            <span className="network"><i />Sepolia pair</span>
+            {account && <span className="wallet-chain" data-chain={walletChain}><i />{chainName}</span>}
+            <button className={account ? "wallet-button connected" : "wallet-button"} onClick={handleConnectWallet}>
+              {account ? <span className="wallet-avatar" style={{ "--hue": avatarHue } as CSSProperties} aria-hidden="true" /> : <Icon name="wallet" />}
+              {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect wallet"}
+            </button>
+          </div>
         </div>
       </header>
 
-      <section className="masthead">
-        <div className="mast-copy">
-          <p className="eyebrow"><span>01</span> CROSS-CHAIN ESCROW</p>
-          <h1>Exchange assets.<br /><em>Keep the promise.</em></h1>
-          <p className="lede">A guided atomic swap between MST on Ethereum Sepolia and ETH on Arbitrum Sepolia.</p>
-          <div className="mast-actions">
-            <a className="primary" href="#live-exchange">Start a swap <span aria-hidden="true">↗</span></a>
-            <a className="text-button" href="#live-exchange">Recover a swap <span aria-hidden="true">→</span></a>
+      <main className="shell" id="top">
+        <section className="hero">
+          <div className="hero-floor" aria-hidden="true" />
+          <div className="hero-copy">
+            <p className="eyebrow-chip"><b>01</b>CROSS-CHAIN ESCROW</p>
+            <h1>Exchange assets.<br /><em>Keep the promise.</em></h1>
+            <p className="lede">A guided atomic swap between MST on Ethereum Sepolia and ETH on Arbitrum Sepolia.</p>
+            <div className="hero-actions">
+              <a className="btn primary lg" href="#live-exchange">Start a swap <Icon name="arrowUpRight" /></a>
+              <a className="btn ghost lg" href="#live-exchange">Recover a swap <Icon name="arrowRight" /></a>
+            </div>
+            <dl className="hero-metrics">
+              <div><dt>2 chains</dt><dd>Verified independently</dd></div>
+              <div><dt>1 hashlock</dt><dd>keccak256(secret)</dd></div>
+              <div><dt>10 → 20 min</dt><dd>Staggered deadlines</dd></div>
+            </dl>
           </div>
+          <Scene3D />
+        </section>
+
+        <section className="protocol" id="protocol" aria-labelledby="protocol-title">
+          <header className="section-head">
+            <div>
+              <p className="eyebrow"><span>HOW</span> PROTOCOL IN FOUR MOVES</p>
+              <h2 id="protocol-title">One secret, two escrows.</h2>
+            </div>
+            <p className="section-lede">Neither contract trusts the other. Each chain is checked on its own, and every lock carries a deadline after which its sender can refund.</p>
+          </header>
+          <ol className="protocol-grid">
+            {protocolSteps.map(step => <li key={step.index} className={`protocol-card ${step.chain}`} data-tilt="9">
+              <div className="protocol-top">
+                <span className="protocol-icon"><Icon name={step.icon} /></span>
+                <span className="protocol-index">{step.index}</span>
+              </div>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+              <span className="protocol-chain"><ChainGlyph chain={step.chain} />{step.chain === "ethereum" ? "Ethereum Sepolia" : "Arbitrum Sepolia"}</span>
+            </li>)}
+          </ol>
+        </section>
+
+        <section className="overview reveal" id="overview" aria-label="Workspace overview">
+          <aside className="sidebar">
+            <p className="side-label">WORKSPACE</p>
+            <div className="side-tabs" role="tablist" aria-label="Workspace views">
+              {(Object.keys(tabs) as Array<keyof typeof tabs>).map((key, index) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={active === key}
+                  className={active === key ? "nav-item selected" : "nav-item"}
+                  onClick={() => {
+                    setActive(key);
+                    if (key !== "overview") document.getElementById("live-exchange")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  <span className="nav-number">0{index + 1}</span>
+                  <span className="nav-label">{tabs[key].label}</span>
+                  {active === key && <span className="nav-arrow" aria-hidden="true">↗</span>}
+                </button>
+              ))}
+            </div>
+            <div className="sidebar-note">
+              <span className="note-mark" aria-hidden="true">i</span>
+              <p>Each chain is verified independently. Neither escrow calls the other.</p>
+            </div>
+          </aside>
+
+          <div className="main-panel panel">
+            <div className="panel-top">
+              <div>
+                <p className="eyebrow"><span>02</span> {tab.eyebrow}</p>
+                <h2>{tab.title}</h2>
+                <p className="tab-note">{tab.note}</p>
+              </div>
+              <a className="icon-button" href="#live-exchange" aria-label="Open exchange desk to refresh chains" title="Refresh in the exchange desk"><Icon name="refresh" /></a>
+            </div>
+
+            {walletError && <p className="alert wallet-message" role="alert">{walletError}</p>}
+
+            {account && <div className="wallet-network-actions">
+              <div className="wallet-id">
+                <span className="wallet-avatar lg" style={{ "--hue": avatarHue } as CSSProperties} aria-hidden="true" />
+                <div>
+                  <small>Connected</small>
+                  <code>{account}</code>
+                </div>
+              </div>
+              <span className="wallet-chain" data-chain={walletChain}><i />{chainName}</span>
+              <div className="switch-buttons">
+                <button className="btn ghost sm" onClick={() => void handleSwitchNetwork(11155111)}>Switch to Sepolia</button>
+                <button className="btn ghost sm" onClick={() => void handleSwitchNetwork(421614)}>Switch to Arbitrum Sepolia</button>
+              </div>
+            </div>}
+
+            <div className="chain-head"><span>CHAIN STATUS</span><span>TEST NETWORKS</span></div>
+            <div className="chain-grid">
+              <article className="chain-card ethereum" data-tilt="7">
+                <div className="chain-identity">
+                  <ChainGlyph chain="ethereum" />
+                  <div><strong>Ethereum Sepolia</strong><small>Chain ID 11155111 · MST escrow</small></div>
+                </div>
+                <div className="chain-meta">
+                  <span className="status-pill"><i />Contracts deployed</span>
+                  <code>{shortHex(config.erc20Htlc)}</code>
+                </div>
+                <a className="row-arrow" href={`https://sepolia.etherscan.io/address/${config.erc20Htlc}`} target="_blank" rel="noreferrer" aria-label="Inspect Ethereum contract"><Icon name="arrowUpRight" /></a>
+              </article>
+              <article className="chain-card arbitrum" data-tilt="7">
+                <div className="chain-identity">
+                  <ChainGlyph chain="arbitrum" />
+                  <div><strong>Arbitrum Sepolia</strong><small>Chain ID 421614 · ETH escrow</small></div>
+                </div>
+                <div className="chain-meta">
+                  <span className="status-pill"><i />Contract deployed</span>
+                  <code>{shortHex(config.ethHtlc)}</code>
+                </div>
+                <a className="row-arrow" href={`https://sepolia.arbiscan.io/address/${config.ethHtlc}`} target="_blank" rel="noreferrer" aria-label="Inspect Arbitrum contract"><Icon name="arrowUpRight" /></a>
+              </article>
+            </div>
+
+            <div className="empty-state">
+              <EmptyGlyph />
+              <div>
+                <h3>Live exchange desk ready</h3>
+                <p>Connect MetaMask, then prepare or import a plan in the exchange desk.</p>
+              </div>
+              <a className="btn primary" href="#live-exchange">Open exchange <Icon name="arrowRight" /></a>
+            </div>
+
+            <footer className="panel-footer"><span>ATOMIC SWAP PROTOCOL</span><span>SEPOLIA ↔ ARBITRUM SEPOLIA</span></footer>
+          </div>
+        </section>
+
+        <div id="live-exchange">
+          <SwapWorkspace account={account} />
         </div>
-        <div className="exchange-art" aria-label="Two chain escrow flow">
-          <div className="art-head"><span>ATOMIC PATH</span><span>LIVE PAIR <i /></span></div>
-          <div className="rail rail-one"><span className="rail-dot" /><span className="rail-label">ETHEREUM / SEPOLIA</span></div>
-          <div className="rail rail-two"><span className="rail-dot" /><span className="rail-label">ARBITRUM / SEPOLIA</span></div>
-          <div className="lock lock-one"><span>01 / LOCK</span><strong>MST</strong><small>Alice → Bob</small></div>
-          <div className="lock lock-two"><span>02 / COUNTERLOCK</span><strong>ETH</strong><small>Bob → Alice</small></div>
-          <div className="hash-badge"><span>H</span><div><small>SHARED HASHLOCK</small><strong>keccak256(secret)</strong></div></div>
-          <span className="art-index">FIG 01 — 2026</span>
-        </div>
-      </section>
 
-      <section className="workspace" id="overview">
-        <aside className="sidebar">
-          <p className="side-label">WORKSPACE</p>
-          {(["overview", "create", "recover"] as const).map((item, index) => (
-            <button key={item} className={`nav-item ${active === item ? "selected" : ""}`} onClick={() => { setActive(item); if (item !== "overview") document.getElementById("live-exchange")?.scrollIntoView({ behavior: "smooth" }); }}>
-              <span className="nav-number">0{index + 1}</span><span>{item === "overview" ? "Overview" : item === "create" ? "New exchange" : "Recovery"}</span>
-              {active === item && <span className="nav-arrow">↗</span>}
-            </button>
-          ))}
-          <div className="sidebar-note"><span className="note-mark">i</span><p>Each chain is verified independently. Neither escrow calls the other.</p></div>
-        </aside>
+        <PrivateWorkspace account={account} />
 
-        <div className="main-panel">
-          <div className="section-heading">
-            <div><p className="eyebrow"><span>02</span> {active === "overview" ? "YOUR ACTIVITY" : active === "create" ? "NEW EXCHANGE" : "TIMEOUT TOOLS"}</p>
-              <h2>{active === "overview" ? "Swap overview" : active === "create" ? "Prepare an exchange" : "Recover locked assets"}</h2></div>
-            <a className="refresh" href="#live-exchange" aria-label="Open live status" title="Open live status">↻</a>
-          </div>
+        <footer className="page-footer">
+          <span>COMP5521 / DISTRIBUTED LEDGER TECHNOLOGY</span>
+          <span>LOCAL DEVELOPMENT BUILD</span>
+        </footer>
+      </main>
 
-          <div className="chain-head"><span>CHAIN STATUS</span><span>TEST NETWORKS</span></div>
-          {walletError && <p className="wallet-message" role="alert">{walletError}</p>}
-          {account && <div className="wallet-network-actions">
-            <span>Connected: {account}</span>
-            <button onClick={() => handleSwitchNetwork(11155111)}>Switch to Sepolia</button>
-            <button onClick={() => handleSwitchNetwork(421614)}>Switch to Arbitrum Sepolia</button>
-          </div>}
-          <div className="chain-row">
-            <div className="chain-identity"><span className="chain-icon eth-icon">Ξ</span><div><strong>Ethereum Sepolia</strong><small>Chain ID 11155111 · MST escrow</small></div></div>
-            <span className="status-pill"><i />Contracts deployed</span>
-            <a className="row-arrow" href={`https://sepolia.etherscan.io/address/${config.erc20Htlc}`} target="_blank" rel="noreferrer" title="Inspect Ethereum contract" aria-label="Inspect Ethereum contract">↗</a>
-          </div>
-          <div className="chain-row">
-            <div className="chain-identity"><span className="chain-icon arb-icon">A</span><div><strong>Arbitrum Sepolia</strong><small>Chain ID 421614 · ETH escrow</small></div></div>
-            <span className="status-pill"><i />Contract deployed</span>
-            <a className="row-arrow" href={`https://sepolia.arbiscan.io/address/${config.ethHtlc}`} target="_blank" rel="noreferrer" title="Inspect Arbitrum contract" aria-label="Inspect Arbitrum contract">↗</a>
-          </div>
-
-          <div className="empty-state">
-            <div className="empty-glyph"><span /><span /></div>
-            <div><strong>Live exchange desk ready</strong><p>Connect MetaMask, then prepare or import a plan in the exchange desk.</p></div>
-            <a className="text-button" href="#live-exchange">Open exchange <span aria-hidden="true">→</span></a>
-          </div>
-          <footer className="panel-footer"><span>ATOMIC SWAP PROTOCOL</span><span>SEPOLIA ↔ ARBITRUM SEPOLIA</span></footer>
-        </div>
-      </section>
-      <div id="live-exchange"><SwapWorkspace account={account} /></div>
-      <PrivateWorkspace account={account} />
-      <footer className="page-footer"><span>COMP5521 / DISTRIBUTED LEDGER TECHNOLOGY</span><span>LOCAL DEVELOPMENT BUILD</span></footer>
-    </main>
+      <nav className="dock" aria-label="Quick navigation">
+        <a href="#overview"><Icon name="overview" /><span>Overview</span></a>
+        <a href="#protocol"><Icon name="protocol" /><span>Protocol</span></a>
+        <a href="#live-exchange"><Icon name="exchange" /><span>Exchange</span></a>
+        <a href="#private-exchange"><Icon name="private" /><span>Private</span></a>
+      </nav>
+    </>
   );
 }

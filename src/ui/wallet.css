@@ -1,6 +1,97 @@
-.wallet-chain{font:9px var(--mono);color:#66736f}
-.wallet-message{margin:10px 0;padding:9px 11px;border-left:2px solid #a65745;background:#f7e8e2;color:#793e32;font-size:10px;overflow-wrap:anywhere}
-.wallet-network-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line);font-size:9px;color:#68736d}
-.wallet-network-actions span{margin-right:auto;overflow-wrap:anywhere}
-.wallet-network-actions button{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:6px 8px;border-radius:2px;font-size:9px}
-@media(max-width:680px){.wallet-chain{display:none}.wallet-network-actions span{flex-basis:100%}}
+/* ---------- Panels (shared by overview + desks) ---------- */
+.panel { position: relative; min-width: 0; padding: clamp(20px, 2.4vw, 30px); border: 1px solid transparent; border-radius: var(--radius); background: var(--panel-bg) padding-box, var(--panel-border) border-box; box-shadow: var(--shadow-3d); }
+.panel::before { content: ""; position: absolute; left: 10%; right: 10%; top: -1px; height: 1px; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(200, 190, 255, 0.85), transparent); }
+
+/* ---------- Overview ---------- */
+.overview { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; align-items: start; margin-bottom: clamp(72px, 10vw, 128px); }
+.sidebar { position: sticky; top: calc(var(--topbar) + 20px); display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 255, 255, 0.025); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.side-label { padding: 2px 6px; font: 500 10.5px/1 var(--mono); letter-spacing: 0.2em; color: var(--faint); }
+.side-tabs { display: grid; gap: 6px; }
+.nav-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 0 14px; border: 1px solid transparent; border-radius: 14px; background: transparent; text-align: left; font-size: 14px; font-weight: 500; color: var(--muted); transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s; }
+.nav-item:hover { color: var(--text); background: rgba(255, 255, 255, 0.045); }
+.nav-item.selected { color: var(--text); border-color: rgba(143, 125, 255, 0.4); background: linear-gradient(135deg, rgba(143, 125, 255, 0.24), rgba(63, 210, 255, 0.08)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 0 rgba(26, 20, 70, 0.8), 0 16px 28px -16px rgba(110, 96, 255, 0.8); transform: translateY(-2px); }
+.nav-number { font: 500 11px/1 var(--mono); color: var(--faint); }
+.nav-item.selected .nav-number { color: #cfc6ff; }
+.nav-label { flex: 1; }
+.nav-arrow { color: var(--cyan); }
+.sidebar-note { display: flex; gap: 12px; padding: 14px; border-radius: 16px; background: rgba(63, 210, 255, 0.06); border: 1px solid rgba(63, 210, 255, 0.16); }
+.note-mark { display: grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; font: 700 12px/1 var(--display); font-style: italic; color: var(--bg); background: var(--cyan); }
+.sidebar-note p { font-size: 13px; line-height: 1.55; color: var(--muted); }
+
+.main-panel { display: grid; gap: 22px; }
+.panel-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.panel-top > div { min-width: 0; }
+.main-panel h2 { font-size: clamp(28px, 3.2vw, 42px); }
+.tab-note { max-width: 560px; margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--muted); }
+.icon-button { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--line-2); border-radius: 14px; color: var(--text); background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 0 rgba(0, 0, 0, 0.45); transition: transform 0.2s, box-shadow 0.2s; }
+.icon-button:hover { transform: translateY(-2px) rotate(-30deg); }
+.icon-button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
+
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 13px 16px; border: 1px solid rgba(255, 111, 143, 0.4); border-radius: 14px; background: linear-gradient(135deg, rgba(255, 111, 143, 0.16), rgba(255, 111, 143, 0.05)); color: #ffd3dc; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.alert::before { content: "!"; display: grid; place-items: center; width: 20px; height: 20px; flex: none; margin-top: 1px; border-radius: 50%; font: 700 12px/1 var(--display); color: var(--bg); background: var(--rose); }
+
+.wallet-network-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 255, 255, 0.03); }
+.wallet-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 260px; }
+.wallet-id > div { display: grid; gap: 2px; min-width: 0; }
+.wallet-id small { font: 500 10.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--mint); }
+.wallet-id code { font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+.switch-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chain-head { display: flex; justify-content: space-between; font: 500 10.5px/1 var(--mono); letter-spacing: 0.18em; color: var(--faint); }
+.chain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.chain-card { --tone: var(--eth); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px 12px; padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: radial-gradient(110% 90% at 100% 0%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 62%), linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 40px -26px rgba(0, 0, 0, 0.9); }
+.chain-card.arbitrum { --tone: var(--arb); }
+.chain-identity { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px; }
+.chain-identity > div { display: grid; gap: 3px; min-width: 0; }
+.chain-identity strong { font: 600 17px/1.25 var(--display); }
+.chain-identity small { font-size: 12.5px; color: var(--muted); }
+.chain-meta { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px dashed var(--line-2); }
+.chain-meta code { font-size: 12px; color: var(--faint); }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--mint); background: rgba(93, 240, 184, 0.1); border: 1px solid rgba(93, 240, 184, 0.24); }
+.status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 10px var(--mint); animation: blink 2.2s ease-in-out infinite; }
+.row-arrow { grid-column: 2; grid-row: 1; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line-2); border-radius: 12px; color: var(--muted); background: rgba(255, 255, 255, 0.04); transition: color 0.2s, background 0.2s, transform 0.2s; transform: translateZ(26px); }
+.row-arrow:hover { color: #fff; background: color-mix(in srgb, var(--tone) 32%, transparent); }
+
+.chain-glyph { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 14px; font: 800 19px/1 var(--display); color: #fff; }
+.chain-glyph.ethereum { background: linear-gradient(145deg, #b9adff, #5a45e6); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 0 #2a1f86, 0 14px 26px -10px rgba(143, 125, 255, 0.8); }
+.chain-glyph.arbitrum { background: linear-gradient(145deg, #8ee6ff, #1677c4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 0 #0c4a7a, 0 14px 26px -10px rgba(63, 210, 255, 0.8); }
+
+.empty-state { display: flex; align-items: center; gap: 20px; padding: 22px; border: 1px dashed rgba(143, 125, 255, 0.35); border-radius: 20px; background: radial-gradient(90% 140% at 0% 50%, rgba(143, 125, 255, 0.12), transparent 60%); }
+.empty-state > div:not(.empty-glyph) { flex: 1; min-width: 0; }
+.empty-state h3 { font: 600 18px/1.3 var(--display); }
+.empty-state p { margin-top: 4px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.empty-state .btn { flex: none; }
+.empty-glyph { position: relative; width: 58px; height: 58px; flex: none; perspective: 240px; }
+.empty-glyph span { position: absolute; left: 7px; width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(190, 182, 255, 0.45); background: linear-gradient(135deg, rgba(143, 125, 255, 0.32), rgba(63, 210, 255, 0.08)); transform: rotateX(58deg) rotateZ(45deg); animation: stack 3.6s ease-in-out infinite; }
+.empty-glyph span:nth-child(1) { top: 20px; opacity: 0.45; }
+.empty-glyph span:nth-child(2) { top: 10px; opacity: 0.75; animation-delay: -0.3s; }
+.empty-glyph span:nth-child(3) { top: 0; animation-delay: -0.6s; box-shadow: 0 0 18px rgba(143, 125, 255, 0.5); }
+@keyframes stack { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+
+.panel-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; padding-top: 18px; border-top: 1px solid var(--line); font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.16em; color: var(--faint); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1040px) {
+  .overview { grid-template-columns: 1fr; }
+  .sidebar { position: static; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
+  .side-label { grid-column: 1 / -1; }
+  .side-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-column: 1 / -1; }
+  .sidebar-note { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .chain-grid { grid-template-columns: 1fr; }
+  .empty-state { flex-wrap: wrap; }
+  .empty-state .btn { width: 100%; }
+}
+@media (max-width: 640px) {
+  .sidebar { padding: 12px; gap: 10px; }
+  .side-tabs { gap: 4px; padding: 4px; border-radius: 16px; background: rgba(0, 0, 0, 0.25); }
+  .nav-item { justify-content: center; flex-direction: column; gap: 4px; min-height: 58px; padding: 8px 4px; text-align: center; font-size: 12.5px; line-height: 1.2; }
+  .nav-arrow { display: none; }
+  .panel-top .icon-button { width: 42px; height: 42px; }
+  .wallet-network-actions { padding: 14px; }
+  .switch-buttons { width: 100%; }
+  .switch-buttons .btn { flex: 1 1 100%; }
+  .chain-card { padding: 16px; }
+  .chain-glyph { width: 40px; height: 40px; font-size: 17px; border-radius: 12px; }
+}

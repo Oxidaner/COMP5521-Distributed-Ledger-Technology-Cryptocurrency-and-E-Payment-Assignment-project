@@ -4,10 +4,11 @@ import config from "../private-config.json";
 import rpc from "../public-config.json";
 import { createPrivateOffset, createPrivatePlan, importPrivateSwap, scalarPoint, verifyPrivatePlan, type PrivatePlan } from "../../shared/privacy";
 import { assertPrivateConfiguration, claimPrivateSwap, lockPrivateSwap, observePrivateClaim, readPrivateSwap, refundPrivateSwap, verifyPrivateLock, type PrivateState } from "../../shared/private-protocol";
-import type { Chain, ReceiptEvidence } from "../../shared/protocol";
+import { explorers, type Chain, type ReceiptEvidence } from "../../shared/protocol";
 import type { TransactionUpdate } from "../../shared/transactions";
 import { switchMetaMaskNetwork } from "../../shared/wallet";
 import { TransactionStatus } from "./TransactionStatus";
+import { ActionLabel, ChainGlyph, EmptyGlyph, Icon, SwapProgress, phaseClass, roleSlug, timeoutNotice } from "./parts";
 
 const providers = { ethereum: new JsonRpcProvider(rpc.ethereumRpc), arbitrum: new JsonRpcProvider(rpc.arbitrumRpc) };
 const configured = config.privateMstHtlc !== ZeroAddress && config.privateEthHtlc !== ZeroAddress;
@@ -111,53 +112,105 @@ export function PrivateWorkspace({ account }: { account: string | null }) {
     if (chain === "arbitrum") setClaimTx(hash);
     void refresh();
   }
-  return <section className="swap-workspace" id="private-exchange">
-    <div className="section-heading"><div><p className="eyebrow">04 / OPTIONAL CHALLENGE</p><h2>Private point-lock exchange</h2></div><button disabled={!!busy} onClick={() => void refresh()}>Refresh private chains</button></div>
-    <p className="swap-hint">Bob keeps a private offset. Alice reveals one claim value; only Bob can derive the other. Exchange points, proofs and backups directly with your peer. Addresses, amounts and timing remain public.</p>
-    {!configured && <p role="alert">Private escrows are not configured. Deploy them before sending assets.</p>}
-    <div className="swap-columns">
-      <div className="swap-card"><h3>1. Bob prepares private offset</h3>
-        <p className="swap-hint">Use a fresh offset for every swap. Save participant backups before starting another session.</p>
-        <button disabled={!!busy || !plan} onClick={reset}>Start new private session</button>
-        <button disabled={!!busy || !!plan} onClick={() => { const next = createPrivateOffset(); setOffset(next.offset); setOffsetText(JSON.stringify(next.offsetPoint)); }}>Generate Bob offset</button>
-        <label>Bob offset point (share directly with Alice)<textarea value={offsetText} onChange={e => setOffsetText(e.target.value)} /></label>
-        <label>Bob private offset<input type="password" value={offset} onChange={e => { setOffset(e.target.value); setVerified(false); }} /></label>
-        <button disabled={!offset || !!busy} onClick={() => action("Save Bob backup", async () => download({ kind: "point-lock-offset", offset, offsetPoint: scalarPoint(offset) }, "private-bob-offset.json"))}>Save Bob offset backup</button>
-        <h3>2. Alice prepares linked locks</h3>
-        <label>Private Alice address<input value={alice} onChange={e => setAlice(e.target.value)} placeholder="0x..." /></label>
-        <label>Private Bob address<input value={bob} onChange={e => setBob(e.target.value)} placeholder="0x..." /></label>
-        <label>Private MST amount<input value={mstAmount} onChange={e => setMstAmount(e.target.value)} /></label>
-        <label>Private ETH amount<input value={ethAmount} onChange={e => setEthAmount(e.target.value)} /></label>
-        <button disabled={!!busy || !configured || !!plan} onClick={() => action("Prepare private plan", prepare)}>Generate private plan and proof</button>
-        <label>Import peer plan or private backup<textarea value={importText} onChange={e => setImportText(e.target.value)} /></label>
-        <button disabled={!!busy} onClick={() => action("Import private material", importMaterial)}>Import private material</button>
+  const ethPhase = states.ethereum?.phase, arbPhase = states.arbitrum?.phase;
+  const steps = [
+    { label: "Offset", detail: "Bob's private point", done: !!offsetText || !!plan },
+    { label: "Plan & proof", detail: "Alice links both locks", done: !!plan },
+    { label: "Lock MST", detail: "Alice on Ethereum", done: !!ethPhase && ethPhase !== "Missing" },
+    { label: "Verify", detail: "Bob checks proof and lock", done: verified },
+    { label: "Lock ETH", detail: "Bob on Arbitrum", done: !!arbPhase && arbPhase !== "Missing" },
+    { label: "Claim ETH", detail: "Alice reveals one value", done: arbPhase === "Claimed" },
+    { label: "Claim MST", detail: "Bob derives the other", done: ethPhase === "Claimed" },
+  ];
+  const shownRole = role || "Not connected";
+
+  return <section className="swap-workspace desk private-desk" id="private-exchange" aria-labelledby="private-title">
+    <header className="section-head">
+      <div>
+        <p className="eyebrow"><span>04</span> OPTIONAL CHALLENGE</p>
+        <h2 id="private-title">Private point-lock exchange</h2>
+        <p className="swap-hint section-lede">Bob keeps a private offset. Alice reveals one claim value; only Bob can derive the other. Exchange points, proofs and backups directly with your peer. Addresses, amounts and timing remain public.</p>
       </div>
-      <div className="swap-card"><h3>3. Verify, lock and claim</h3>
-        {plan ? <>
-          <p>Connected role: <strong>{role || "Not connected"}</strong></p>
-          <dl className="swap-details"><dt>Amounts</dt><dd>{formatEther(plan.mstAmount)} MST / {formatEther(plan.ethAmount)} ETH</dd><dt>MST swap ID</dt><dd>{plan.mstSwapId}</dd><dt>ETH swap ID</dt><dd>{plan.ethSwapId}</dd><dt>MST point</dt><dd>{plan.mstPoint.x}<br />{plan.mstPoint.y}</dd><dt>ETH point</dt><dd>{plan.ethPoint.x}<br />{plan.ethPoint.y}</dd><dt>Deadlines</dt><dd>ETH: {new Date(plan.ethTimelock * 1000).toLocaleString()}<br />MST: {new Date(plan.mstTimelock * 1000).toLocaleString()}</dd></dl>
-          <div className="swap-actions">
-            <button disabled={!!busy || role !== "Alice" || expired || states.ethereum?.phase !== "Missing" || !states.arbitrum} onClick={() => action("Private MST lock", () => lock("ethereum"))}>Alice: approve and lock private MST</button>
-            <button disabled={!!busy || !offset || !plan.mstLockTx} onClick={() => action("Verify private linkage", async () => { verifyPrivatePlan(plan, offset); await verifyPrivateLock(providers.ethereum, config, plan, "ethereum"); setVerified(true); })}>Bob: verify proof, offset and MST lock</button>
-            <button disabled={!!busy || role !== "Bob" || !verified || !offset || expired || states.ethereum?.phase !== "Active" || states.arbitrum?.phase !== "Missing"} onClick={() => action("Private ETH lock", () => lock("arbitrum"))}>Bob: lock private ETH</button>
-            <button disabled={!!busy || role !== "Alice" || !aliceSecret || states.ethereum?.phase !== "Active" || states.arbitrum?.phase !== "Active"} onClick={() => action("First private claim", () => claim("arbitrum"))}>Alice: claim private ETH</button>
+      <button className="btn ghost" disabled={!!busy} onClick={() => void refresh()}><Icon name="refresh" />Refresh private chains</button>
+    </header>
+    {!configured && <p className="alert" role="alert">Private escrows are not configured. Deploy them before sending assets.</p>}
+    <SwapProgress steps={steps} notice={timeoutNotice(states)} />
+    <div className="desk-grid">
+      <div className="desk-stack">
+        <article className="panel reveal">
+          <h3><span className="step-no">1.</span> Bob prepares private offset</h3>
+          <p className="swap-hint">Use a fresh offset for every swap. Save participant backups before starting another session.</p>
+          <div className="button-row">
+            <button className="btn ghost" disabled={!!busy || !plan} onClick={reset}>Start new private session</button>
+            <button className="btn primary" disabled={!!busy || !!plan} onClick={() => { const next = createPrivateOffset(); setOffset(next.offset); setOffsetText(JSON.stringify(next.offsetPoint)); }}>Generate Bob offset</button>
           </div>
-          <label>First private ETH claim transaction<input value={claimTx} onChange={e => setClaimTx(e.target.value)} /></label>
-          <button disabled={!!busy || role !== "Bob" || !offset || !claimTx || states.ethereum?.phase !== "Active"} onClick={() => action("Derived private claim", () => claim("ethereum"))}>Bob: derive value and claim private MST</button>
-          <details><summary>Peer handoff (never publish)</summary><textarea readOnly value={JSON.stringify(plan, null, 2)} /></details>
-          <details><summary>Participant backup</summary><label>Alice private claim value<input type="password" value={aliceSecret} onChange={e => setAliceSecret(e.target.value)} /></label><button onClick={() => download({ plan, aliceSecret, offset }, `private-${plan.mstSwapId}.json`)}>Save private participant backup</button></details>
-        </> : <p>Bob saves his offset first. Alice uses only his point to prepare the plan. Save each participant's backup before locking.</p>}
+          <label>Bob offset point (share directly with Alice)<textarea spellCheck={false} value={offsetText} onChange={e => setOffsetText(e.target.value)} /></label>
+          <label>Bob private offset<input type="password" autoComplete="off" value={offset} onChange={e => { setOffset(e.target.value); setVerified(false); }} /></label>
+          <button className="btn ghost block" disabled={!offset || !!busy} onClick={() => action("Save Bob backup", async () => download({ kind: "point-lock-offset", offset, offsetPoint: scalarPoint(offset) }, "private-bob-offset.json"))}>Save Bob offset backup</button>
+        </article>
+        <article className="panel reveal">
+          <h3><span className="step-no">2.</span> Alice prepares linked locks</h3>
+          <label>Private Alice address<input value={alice} spellCheck={false} autoComplete="off" onChange={e => setAlice(e.target.value)} placeholder="0x..." /></label>
+          <label>Private Bob address<input value={bob} spellCheck={false} autoComplete="off" onChange={e => setBob(e.target.value)} placeholder="0x..." /></label>
+          <div className="amount-fields">
+            <label>Private MST amount<input inputMode="decimal" value={mstAmount} onChange={e => setMstAmount(e.target.value)} /></label>
+            <label>Private ETH amount<input inputMode="decimal" value={ethAmount} onChange={e => setEthAmount(e.target.value)} /></label>
+          </div>
+          <button className="btn primary block" disabled={!!busy || !configured || !!plan} onClick={() => action("Prepare private plan", prepare)}>Generate private plan and proof</button>
+          <div className="divider"><span>or</span></div>
+          <label>Import peer plan or private backup<textarea spellCheck={false} placeholder="Paste JSON here" value={importText} onChange={e => setImportText(e.target.value)} /></label>
+          <button className="btn ghost block" disabled={!!busy} onClick={() => action("Import private material", importMaterial)}>Import private material</button>
+        </article>
       </div>
+      <article className="panel reveal">
+        <h3><span className="step-no">3.</span> Verify, lock and claim</h3>
+        {plan ? <>
+          <p className="role-line">Connected role: <strong className={`role-chip role-${roleSlug(shownRole)}`}>{shownRole}</strong></p>
+          <dl className="swap-details">
+            <div className="wide accent"><dt>Amounts</dt><dd>{formatEther(plan.mstAmount)} MST / {formatEther(plan.ethAmount)} ETH</dd></div>
+            <div className="wide"><dt>MST swap ID</dt><dd>{plan.mstSwapId}</dd></div>
+            <div className="wide"><dt>ETH swap ID</dt><dd>{plan.ethSwapId}</dd></div>
+            <div className="wide"><dt>MST point</dt><dd>{plan.mstPoint.x}<br />{plan.mstPoint.y}</dd></div>
+            <div className="wide"><dt>ETH point</dt><dd>{plan.ethPoint.x}<br />{plan.ethPoint.y}</dd></div>
+            <div className="wide"><dt>Deadlines</dt><dd>ETH: {new Date(plan.ethTimelock * 1000).toLocaleString()}<br />MST: {new Date(plan.mstTimelock * 1000).toLocaleString()}</dd></div>
+          </dl>
+          <div className="swap-actions">
+            <button className="btn action" disabled={!!busy || role !== "Alice" || expired || states.ethereum?.phase !== "Missing" || !states.arbitrum} onClick={() => action("Private MST lock", () => lock("ethereum"))}><ActionLabel text="Alice: approve and lock private MST" /></button>
+            <button className="btn action" disabled={!!busy || !offset || !plan.mstLockTx} onClick={() => action("Verify private linkage", async () => { verifyPrivatePlan(plan, offset); await verifyPrivateLock(providers.ethereum, config, plan, "ethereum"); setVerified(true); })}><ActionLabel text="Bob: verify proof, offset and MST lock" /></button>
+            <button className="btn action" disabled={!!busy || role !== "Bob" || !verified || !offset || expired || states.ethereum?.phase !== "Active" || states.arbitrum?.phase !== "Missing"} onClick={() => action("Private ETH lock", () => lock("arbitrum"))}><ActionLabel text="Bob: lock private ETH" /></button>
+            <button className="btn action" disabled={!!busy || role !== "Alice" || !aliceSecret || states.ethereum?.phase !== "Active" || states.arbitrum?.phase !== "Active"} onClick={() => action("First private claim", () => claim("arbitrum"))}><ActionLabel text="Alice: claim private ETH" /></button>
+          </div>
+          <div className="claim-box">
+            <label>First private ETH claim transaction<input value={claimTx} spellCheck={false} autoComplete="off" placeholder="0x..." onChange={e => setClaimTx(e.target.value)} /></label>
+            <button className="btn action" disabled={!!busy || role !== "Bob" || !offset || !claimTx || states.ethereum?.phase !== "Active"} onClick={() => action("Derived private claim", () => claim("ethereum"))}><ActionLabel text="Bob: derive value and claim private MST" /></button>
+          </div>
+          <details><summary>Peer handoff (never publish)</summary><textarea readOnly spellCheck={false} value={JSON.stringify(plan, null, 2)} /></details>
+          <details className="secret"><summary>Participant backup</summary><label>Alice private claim value<input type="password" autoComplete="off" value={aliceSecret} onChange={e => setAliceSecret(e.target.value)} /></label><button className="btn ghost block" onClick={() => download({ plan, aliceSecret, offset }, `private-${plan.mstSwapId}.json`)}>Save private participant backup</button></details>
+        </> : <div className="panel-empty"><EmptyGlyph /><p className="swap-hint">Bob saves his offset first. Alice uses only his point to prepare the plan. Save each participant's backup before locking.</p></div>}
+      </article>
     </div>
-    <div className="state-grid">{(["ethereum", "arbitrum"] as const).map(chain => <article key={chain}>
-      <strong>{chain === "ethereum" ? "Private MST / Ethereum Sepolia" : "Private ETH / Arbitrum Sepolia"}</strong>
-      <span className="state-value">{states[chain]?.phase ?? (errors[chain] ? "Unavailable" : "Not loaded")}</span>
-      {states[chain] && <small>Block time: {new Date(states[chain]!.timestamp * 1000).toLocaleTimeString()}</small>}
-      {errors[chain] && <small role="alert">{errors[chain]}</small>}
-      <button disabled={!!busy || !plan || states[chain]?.phase !== "Expired" || role !== (chain === "ethereum" ? "Alice" : "Bob")} onClick={() => action("Private refund", async () => { await refundPrivateSwap(await signer(chain), config, plan!, chain, progress, observe); void refresh(); })}>Sender: refund private lock after expiry</button>
-    </article>)}</div>
-    <p className="swap-feedback" role="status">{message || "Private linkage is checked before the second asset is committed."}</p>
-    <TransactionStatus pending={pending} confirmed={transactions} />
-    <details><summary>Private deployed contracts</summary><p className="swap-hint">MST: {config.mst}<br />MST point escrow: {config.privateMstHtlc}<br />ETH point escrow: {config.privateEthHtlc}</p></details>
+    <article className="panel recovery-card reveal">
+      <div className="panel-head"><h3>Private escrow status</h3><p className="swap-hint">Each private escrow is read on its own chain. The sender can refund once that lock has expired.</p></div>
+      <div className="state-grid">{(["ethereum", "arbitrum"] as const).map(chain => {
+        const phase = states[chain]?.phase ?? (errors[chain] ? "Unavailable" : "Not loaded");
+        return <article key={chain} className={`state-tile ${phaseClass(phase)}`} data-tilt="6">
+          <div className="state-top"><ChainGlyph chain={chain} /><strong>{chain === "ethereum" ? "Private MST / Ethereum Sepolia" : "Private ETH / Arbitrum Sepolia"}</strong></div>
+          <div className="state-main"><span className="orb" aria-hidden="true" /><span className="state-value">{phase}</span></div>
+          {states[chain] && <small>Block time: {new Date(states[chain]!.timestamp * 1000).toLocaleTimeString()}</small>}
+          {errors[chain] && <small className="state-error" role="alert">{errors[chain]}</small>}
+          <button className="btn ghost" disabled={!!busy || !plan || states[chain]?.phase !== "Expired" || role !== (chain === "ethereum" ? "Alice" : "Bob")} onClick={() => action("Private refund", async () => { await refundPrivateSwap(await signer(chain), config, plan!, chain, progress, observe); void refresh(); })}>Sender: refund private lock after expiry</button>
+        </article>;
+      })}</div>
+      <p className={`swap-feedback${busy ? " is-busy" : ""}`} role="status"><span className="feedback-dot" aria-hidden="true" />{message || "Private linkage is checked before the second asset is committed."}</p>
+      <TransactionStatus pending={pending} confirmed={transactions} />
+    </article>
+    <details className="contracts">
+      <summary>Private deployed contracts</summary>
+      <dl className="contract-list">
+        <div><dt>MST</dt><dd><a href={`${explorers.ethereum}/address/${config.mst}`} target="_blank" rel="noreferrer">{config.mst}</a></dd></div>
+        <div><dt>MST point escrow</dt><dd><a href={`${explorers.ethereum}/address/${config.privateMstHtlc}`} target="_blank" rel="noreferrer">{config.privateMstHtlc}</a></dd></div>
+        <div><dt>ETH point escrow</dt><dd><a href={`${explorers.arbitrum}/address/${config.privateEthHtlc}`} target="_blank" rel="noreferrer">{config.privateEthHtlc}</a></dd></div>
+      </dl>
+    </details>
   </section>;
 }
