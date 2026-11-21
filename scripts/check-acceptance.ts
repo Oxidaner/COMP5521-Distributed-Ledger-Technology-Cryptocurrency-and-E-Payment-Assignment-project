@@ -1,3 +1,4 @@
+import { getReceiptWithRetry } from "../shared/receipts.ts";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { Contract, Interface, JsonRpcProvider, getAddress, isHexString } from "ethers";
@@ -52,7 +53,7 @@ async function main() {
     for (const name of ["MST", "ERC20HTLC", "ETHHTLC"]) {
       const contract = deployment.contracts[name];
       const provider = providers[name === "ETHHTLC" ? "arbitrum" : "ethereum"];
-      const receipt = await provider.getTransactionReceipt(contract.transactionHash);
+      const receipt = await getReceiptWithRetry(provider, contract.transactionHash);
       assert(receipt && receipt.status === 1 && getAddress(receipt.contractAddress!) === getAddress(contract.address));
       assert.notEqual(await provider.getCode(contract.address), "0x");
       receiptsChecked++;
@@ -61,7 +62,7 @@ async function main() {
     const iface = new Interface(COMMON_ABI);
     for (const evidence of scenarios) {
       for (const tx of evidence.transactions as ReceiptEvidence[]) {
-        const receipt = await providers[tx.chain].getTransactionReceipt(tx.hash);
+        const receipt = await getReceiptWithRetry(providers[tx.chain], tx.hash);
         assert(receipt && receipt.status === 1 && receipt.blockNumber === tx.blockNumber);
         if (tx.action !== "approve") {
           const address = tx.chain === "ethereum" ? config.erc20Htlc : config.ethHtlc;

@@ -1,3 +1,4 @@
+import "./receipts.test.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isHexString, keccak256 } from "ethers";

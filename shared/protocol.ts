@@ -1,3 +1,4 @@
+import { getReceiptWithRetry } from "./receipts";
 import {
   Contract, Interface, MaxUint256, ZeroAddress, getAddress, hexlify, isHexString, keccak256,
   parseEther, randomBytes, type Provider, type Signer,
@@ -124,7 +125,7 @@ export async function verifyLock(provider: Provider, config: Configuration, plan
   const address = chain === "ethereum" ? config.erc20Htlc : config.ethHtlc;
   const txHash = chain === "ethereum" ? plan.mstLockTx : plan.ethLockTx;
   if (!txHash) throw new Error(`${chain} confirmed lock transaction is required`);
-  const receipt = await provider.getTransactionReceipt(txHash);
+  const receipt = await getReceiptWithRetry(provider, txHash);
   if (!receipt || receipt.status !== 1) throw new Error(`${chain} lock transaction is unconfirmed or failed`);
   const iface = new Interface(COMMON_ABI);
   const created = receipt.logs.some((log) => {
@@ -193,7 +194,7 @@ export async function refundSwap(signer: Signer, config: Configuration, plan: Sw
 
 export async function revealedPreimage(provider: Provider, config: Configuration, plan: SwapPlan, claimTx: string): Promise<string> {
   await checkChain(provider, "arbitrum");
-  const receipt = await provider.getTransactionReceipt(claimTx);
+  const receipt = await getReceiptWithRetry(provider, claimTx);
   if (!receipt || receipt.status !== 1) throw new Error("ETH claim transaction is not confirmed");
   const iface = new Interface(COMMON_ABI);
   for (const log of receipt.logs) {
